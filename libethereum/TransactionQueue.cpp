@@ -347,7 +347,8 @@ void TransactionQueue::clear()
 {
 	WriteGuard l(m_lock);
 	m_known.clear();
-	m_current.clear();
+    m_dropped.clear();
+    m_current.clear();
 	m_currentByAddressAndNonce.clear();
 	m_currentByHash.clear();
 	m_future.clear();

@@ -41,15 +41,16 @@ PrecompiledContract::PrecompiledContract(
 	}, _exec, _startingBlock)
 {}
 
-ChainOperationParams::ChainOperationParams():
-	m_blockReward("0x4563918244F40000"),
-	minGasLimit(0x1388),
-	maxGasLimit("0x7fffffffffffffff"),
-	gasLimitBoundDivisor(0x0400),
-	networkID(0x0),
-	minimumDifficulty(0x020000),
-	difficultyBoundDivisor(0x0800),
-	durationLimit(0x0d)
+ChainOperationParams::ChainOperationParams()
+  : m_blockReward("0x4563918244F40000"),
+    m_allowRewardOverwrite(true),
+    minGasLimit(0x1388),
+    maxGasLimit("0x7fffffffffffffff"),
+    gasLimitBoundDivisor(0x0400),
+    networkID(0x0),
+    minimumDifficulty(0x020000),
+    difficultyBoundDivisor(0x0800),
+    durationLimit(0x0d)
 {
 }
 
@@ -73,8 +74,8 @@ EVMSchedule const& ChainOperationParams::scheduleForBlockNumber(u256 const& _blo
 
 u256 ChainOperationParams::blockReward(EVMSchedule const& _schedule) const
 {
-	if (_schedule.blockRewardOverwrite)
-		return *_schedule.blockRewardOverwrite;
+    if (_schedule.blockRewardOverwrite && m_allowRewardOverwrite)
+        return *_schedule.blockRewardOverwrite;
 	else
 		return m_blockReward;
 }

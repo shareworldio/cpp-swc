@@ -21,10 +21,15 @@
  */
 
 #include "Test.h"
+#include "BuildInfo.h"
 #include <jsonrpccpp/common/errors.h>
 #include <jsonrpccpp/common/exception.h>
-#include <libethereum/ClientTest.h>
+#include <libdevcore/CommonJS.h>
+#include <libethcore/Common.h>
 #include <libethereum/ChainParams.h>
+#include <libethereum/ClientTest.h>
+#include <libethereum/Transaction.h>
+#include <libweb3jsonrpc/JsonHelper.h>
 
 using namespace std;
 using namespace dev;
@@ -32,6 +37,76 @@ using namespace dev::rpc;
 using namespace jsonrpc;
 
 Test::Test(eth::Client& _eth): m_eth(_eth) {}
+
+Json::Value fillJsonWithState(eth::State const& _state, eth::AccountMaskMap const& _map)
+{
+    bool mapEmpty = (_map.size() == 0);
+    Json::Value oState;
+    for (auto const& a : _state.addresses())
+    {
+        if (_map.size() && _map.find(a.first) == _map.end())
+            continue;
+
+        Json::Value o;
+        if (mapEmpty || _map.at(a.first).hasBalance())
+            o["balance"] = toCompactHexPrefixed(_state.balance(a.first), 1);
+        if (mapEmpty || _map.at(a.first).hasNonce())
+            o["nonce"] = toCompactHexPrefixed(_state.getNonce(a.first), 1);
+
+        if (mapEmpty || _map.at(a.first).hasStorage())
+        {
+            Json::Value store;
+            for (auto const& s : _state.storage(a.first))
+                store[toCompactHexPrefixed(s.second.first, 1)] =
+                    toCompactHexPrefixed(s.second.second, 1);
+            o["storage"] = store;
+        }
+
+        if (mapEmpty || _map.at(a.first).hasCode())
+        {
+            if (_state.code(a.first).size() > 0)
+                o["code"] = toHexPrefixed(_state.code(a.first));
+            else
+                o["code"] = "";
+        }
+        oState[toHexPrefixed(a.first)] = o;
+    }
+    return oState;
+}
+
+string exportLog(eth::LogEntries const& _logs)
+{
+    RLPStream s;
+    s.appendList(_logs.size());
+    for (eth::LogEntry const& l : _logs)
+        l.streamRLP(s);
+    return toHexPrefixed(sha3(s.out()));
+}
+
+const int c_postStateJustHashVersion = 1;
+const int c_postStateFullStateVersion = 2;
+const int c_postStateLogHashVersion = 3;
+string Test::test_getPostState(Json::Value const& param1)
+{
+    Json::Value out;
+    Json::FastWriter fastWriter;
+    if (u256(param1["version"].asString()) == c_postStateJustHashVersion)
+        return toJS(m_eth.postState().state().rootHash());
+    else if (u256(param1["version"].asString()) == c_postStateFullStateVersion)
+    {
+        eth::AccountMaskMap _map;
+        out = fillJsonWithState(m_eth.postState().state(), _map);
+        return fastWriter.write(out);
+    }
+    else if (u256(param1["version"].asString()) == c_postStateLogHashVersion)
+    {
+		if (m_eth.blockChain().receipts().receipts.size() != 0)
+			return exportLog(m_eth.blockChain().receipts().receipts[0].log());
+		else
+            return toJS(EmptyListSHA3);
+    }
+    return "";
+}
 
 bool Test::test_setChainParams(Json::Value const& param1)
 {

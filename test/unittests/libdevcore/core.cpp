@@ -25,6 +25,7 @@
 #include <libdevcore/Log.h>
 #include <test/tools/libtesteth/TestOutputHelper.h>
 
+using namespace dev;
 using namespace dev::test;
 
 BOOST_FIXTURE_TEST_SUITE(CoreLibTests, TestOutputHelperFixture)

@@ -133,6 +133,9 @@ public:
     virtual h256s pendingHashes() const override;
     virtual BlockHeader pendingInfo() const override;
     virtual BlockDetails pendingDetails() const override;
+	
+	virtual Transactions ListTransactions(Address const& _address, u256 const& _nonce, unsigned const& _count) const override;
+	virtual std::vector<LocalisedTransactionReceipt> ListTransactionReceipts(Address const& _address, u256 const& _nonce, unsigned const& _count) const override;
 
     virtual EVMSchedule evmSchedule() const override { return sealEngine()->evmSchedule(pendingInfo().number()); }
 

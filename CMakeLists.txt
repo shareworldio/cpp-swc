@@ -87,8 +87,8 @@ include(EthUtils)
 
 set(Boost_USE_STATIC_LIBS ON)
 set(Boost_USE_MULTITHREADED ON)
-hunter_add_package(Boost COMPONENTS program_options filesystem system thread context fiber)
-find_package(Boost CONFIG REQUIRED program_options filesystem system thread context fiber)
+hunter_add_package(Boost COMPONENTS program_options filesystem system thread context fiber regex log)
+find_package(Boost CONFIG REQUIRED program_options filesystem system thread context fiber regex log)
 
 hunter_add_package(jsoncpp)
 find_package(jsoncpp CONFIG REQUIRED)
@@ -105,6 +105,7 @@ find_package(libjson-rpc-cpp CONFIG REQUIRED)
 hunter_add_package(libscrypt)
 find_package(libscrypt CONFIG REQUIRED)
 
+include(ProjectJsonRpcCpp)
 include(ProjectSecp256k1)
 include(ProjectLibFF)
 
@@ -143,6 +144,9 @@ add_subdirectory(libethashseal)
 
 add_subdirectory(libwebthree)
 add_subdirectory(libweb3jsonrpc)
+
+add_subdirectory(libqpos)
+add_subdirectory(libsolidity)
 
 if (EVMJIT)
     add_subdirectory(evmjit)

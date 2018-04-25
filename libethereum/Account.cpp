@@ -24,6 +24,9 @@
 #include <libethcore/ChainOperationParams.h>
 #include <libethcore/Precompiled.h>
 
+#include <libsolidity/solidity.h>
+#include <libdevcore/CommonJS.h>
+
 using namespace std;
 using namespace dev;
 using namespace dev::eth;
@@ -91,11 +94,12 @@ namespace
 	string const c_nonce = "nonce";
 	string const c_code = "code";
 	string const c_codeFromFile = "codeFromFile";  ///< A file containg a code as bytes.
+	string const c_codeFromSolidity = "codeFromSolidity";  ///< A file containg a code as bytes.
 	string const c_storage = "storage";
 	string const c_shouldnotexist = "shouldnotexist";
 	string const c_precompiled = "precompiled";
 	std::set<string> const c_knownAccountFields = {
-		c_wei, c_finney, c_balance, c_nonce, c_code, c_codeFromFile, c_storage, c_shouldnotexist,
+		c_wei, c_finney, c_balance, c_nonce, c_code, c_codeFromFile, c_codeFromSolidity, c_storage, c_shouldnotexist,
 		c_code, c_precompiled
 	};
 	void validateAccountMapObj(js::mObject const& _o)
@@ -128,7 +132,7 @@ AccountMap dev::eth::jsonToAccountMap(std::string const& _json, u256 const& _def
 
 		bool haveBalance = (o.count(c_wei) || o.count(c_finney) || o.count(c_balance));
 		bool haveNonce = o.count(c_nonce);
-		bool haveCode = o.count(c_code) || o.count(c_codeFromFile);
+		bool haveCode = o.count(c_code) || o.count(c_codeFromFile) || o.count(c_codeFromSolidity);
 		bool haveStorage = o.count(c_storage);
 		bool shouldNotExists = o.count(c_shouldnotexist);
 
@@ -155,8 +159,10 @@ AccountMap dev::eth::jsonToAccountMap(std::string const& _json, u256 const& _def
                     if (codeStr.find("0x") != 0 && !codeStr.empty())
                         cerr << "Error importing code of account " << a
                              << "! Code needs to be hex bytecode prefixed by \"0x\".";
-                    else
+                    else{
+						cdebug << "a=" << toJS(a) << ",codeStr=" << codeStr;
                         ret[a].setCode(fromHex(codeStr));
+                    }
                 }
                 else
                     cerr << "Error importing code of account " << a
@@ -183,6 +189,17 @@ AccountMap dev::eth::jsonToAccountMap(std::string const& _json, u256 const& _def
                          << "! Code file path must be a string\n";
             }
 
+			if (o.count(c_codeFromSolidity))
+			{
+				std::string out = compileFile(o[c_codeFromSolidity].get_str());
+                bytes code = fromHex(out);
+                if (code.empty())
+                    cerr << "Error importing code of account " << a << "! Code file "
+                         << o[c_codeFromSolidity].get_str() << " empty or does not exist.\n";
+				else
+					cdebug << "o[c_codeFromSolidity].get_str()=" << o[c_codeFromSolidity].get_str() << ",code=" << code;
+                ret[a].setCode(std::move(code));
+			}
 
 			if (haveStorage)
 				for (pair<string, js::mValue> const& j: o[c_storage].get_obj())

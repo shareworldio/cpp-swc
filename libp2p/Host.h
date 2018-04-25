@@ -240,6 +240,10 @@ public:
 	/// Get the node information.
 	p2p::NodeInfo nodeInfo() const { return NodeInfo(id(), (networkPreferences().publicIPAddress.empty() ? m_tcpPublic.address().to_string() : networkPreferences().publicIPAddress), m_tcpPublic.port(), m_clientVersion); }
 
+	bool onTick(unsigned _t, std::function<void (const boost::system::error_code& _e)> _fun);
+	bool onInit(std::function<void ()> _fun);
+	ba::io_service& ioService() { return m_ioService; }
+	KeyPair keyPair() const { return m_alias; }
 protected:
 	void onNodeTableEvent(NodeID const& _n, NodeTableEventType const& _e);
 
@@ -349,6 +353,9 @@ private:
 	bool m_dropPeers = false;
 
 	ReputationManager m_repMan;
+
+	std::list<std::shared_ptr<boost::asio::deadline_timer>> m_tickTimer;
+	Mutex x_tickTimer;
 };
 
 }

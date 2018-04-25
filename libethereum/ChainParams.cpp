@@ -103,11 +103,20 @@ ChainParams ChainParams::loadConfig(
 	cp.sealEngineName = obj[c_sealEngine].get_str();
 	// params
 	js::mObject params = obj[c_params].get_obj();
-	validateFieldNames(params, c_knownParamNames);
+	//validateFieldNames(params, c_knownParamNames);
 	cp.accountStartNonce = u256(fromBigEndian<u256>(fromHex(params[c_accountStartNonce].get_str())));
 	cp.maximumExtraDataSize = u256(fromBigEndian<u256>(fromHex(params[c_maximumExtraDataSize].get_str())));
 	cp.tieBreakingGas = params.count(c_tieBreakingGas) ? params[c_tieBreakingGas].get_bool() : true;
 	cp.setBlockReward(u256(fromBigEndian<u256>(fromHex(params[c_blockReward].get_str()))));
+
+	
+	for (auto i : params){
+		if(!c_knownParamNames.count(i.first)){
+			cp.otherParams[i.first] = string(i.second.get_str());
+		}
+	}
+
+	cdebug << "cp.otherParams=" << cp.otherParams;
 
 	auto setOptionalU256Parameter = [&params](u256 &_destination, string const& _name)
 	{
@@ -133,6 +142,27 @@ ChainParams ChainParams::loadConfig(
 	if (params.count(c_networkID))
 		cp.networkID = int(u256(fromBigEndian<u256>(fromHex(params.at(c_networkID).get_str()))));
 	cp.allowFutureBlocks = params.count(c_allowFutureBlocks);
+
+	if(obj.count("nodes")){
+		std::set<p2p::NodeSpec> n;
+		js::mArray val_array = obj["nodes"].get_array();
+			
+		for (unsigned int i = 0; i < val_array.size(); i++){
+			std::string v = val_array[i].get_str();
+
+			cdebug << "val_array[" << i << "] = " << v;
+			if(v.substr(0, 10) == "enode://%@"){
+				cp.exnodesMe = true;
+			}else if(v.substr(0, 10) == "enode://*@"){
+				cp.exnodesAnyone = true;
+			}else{
+				p2p::NodeSpec spec(v);
+				cp.exnodes.push_back(spec);
+			}
+		}
+
+		//cp.exnodes = n;
+	}
 
 	// genesis
 	string genesisStr = json_spirit::write_string(obj[c_genesis], false);
@@ -199,6 +229,7 @@ ChainParams ChainParams::loadGenesis(string const& _json, h256 const& _stateRoot
 SealEngineFace* ChainParams::createSealEngine()
 {
 	SealEngineFace* ret = SealEngineRegistrar::create(sealEngineName);
+	cdebug << "sealEngineName=" << sealEngineName;
 	assert(ret && "Seal engine not found");
 	if (!ret)
 		return nullptr;

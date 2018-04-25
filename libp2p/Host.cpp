@@ -47,6 +47,16 @@ std::chrono::seconds const c_keepAliveInterval = std::chrono::seconds(30);
 /// Disconnect timeout after failure to respond to keepAlivePeers ping.
 std::chrono::milliseconds const c_keepAliveTimeOut = std::chrono::milliseconds(1000);
 
+void tickFun(const boost::system::error_code& _e, std::shared_ptr<boost::asio::deadline_timer> _timer, unsigned _t, std::function<void (const boost::system::error_code& _e)> _fun)
+{
+	(void)_e;
+
+	_fun(_e);
+
+	_timer->expires_from_now(boost::posix_time::milliseconds(_t));
+	_timer->async_wait(boost::bind(tickFun, boost::asio::placeholders::error, _timer, _t, _fun));
+}
+
 HostNodeTableHandler::HostNodeTableHandler(Host& _host): m_host(_host) {}
 
 void HostNodeTableHandler::processEvent(NodeID const& _n, NodeTableEventType const& _e)
@@ -983,4 +993,22 @@ bool Host::addNodeToNodeTable(Node const& _node, NodeTable::NodeRelation _relati
 
     nodeTable->addNode(_node, _relation);
     return true;
+}
+
+bool Host::onInit(std::function<void ()> _fun)
+{
+	boost::asio::deadline_timer timer(m_ioService, boost::posix_time::milliseconds(0));
+	timer.async_wait(boost::bind(_fun));
+
+	return true;
+}
+
+bool Host::onTick(unsigned _t, std::function<void (const boost::system::error_code& _e)> _fun)
+{
+	std::shared_ptr<boost::asio::deadline_timer> timer(new boost::asio::deadline_timer(m_ioService, boost::posix_time::milliseconds(_t)));
+	m_tickTimer.push_back(timer);
+	
+	timer->async_wait(boost::bind(tickFun, boost::asio::placeholders::error, timer, _t, _fun));
+
+	return true;
 }

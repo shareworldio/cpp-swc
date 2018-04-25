@@ -20,6 +20,7 @@
  */
 
 #include "Log.h"
+#include "LogBoost.h"
 
 #include <string>
 #include <iostream>
@@ -35,6 +36,19 @@ using namespace dev;
 
 // Logging
 int dev::g_logVerbosity = 5;
+int dev::g_noColor = 0;
+
+int g_boostErr = boostLogInit();
+
+BOOST_LOG_INLINE_GLOBAL_LOGGER_DEFAULT(g_boostLog, src::logger_mt)
+
+
+void dev::setRecordLog(bool _log)
+{
+	dev::g_noColor = _log;	
+	cdebug << "g_noColor=" << g_noColor;
+}
+
 mutex x_logOverride;
 
 /// Map of Log Channel types to bool, false forces the channel to be disabled, true forces it to be enabled.
@@ -76,13 +90,13 @@ const char* NoteChannel::name() { return EthBlue "  i"; }
 const char* DebugChannel::name() { return EthWhite "  D"; }
 const char* TraceChannel::name() { return EthGray "..."; }
 #else
-const char* LogChannel::name() { return EthGray "···"; }
-const char* LeftChannel::name() { return EthNavy "◀▬▬"; }
-const char* RightChannel::name() { return EthGreen "▬▬▶"; }
-const char* WarnChannel::name() { return EthOnRed EthBlackBold "  ✘"; }
-const char* NoteChannel::name() { return EthBlue "  ℹ"; }
-const char* DebugChannel::name() { return EthWhite "  ◇"; }
-const char* TraceChannel::name() { return EthGray "..."; }
+const char* LogChannel::name() { if(g_noColor) return ""; return EthGray "···"; }
+const char* LeftChannel::name() { if(g_noColor) return "";  return EthNavy "◀▬▬"; }
+const char* RightChannel::name() { if(g_noColor) return "";  return EthGreen "▬▬▶"; }
+const char* WarnChannel::name() { if(g_noColor) return "";  return EthOnRed EthBlackBold "  ✘"; }
+const char* NoteChannel::name() { if(g_noColor) return "";  return EthBlue "  ℹ"; }
+const char* DebugChannel::name() { if(g_noColor) return "";  return EthWhite "  ◇"; }
+const char* TraceChannel::name() { if(g_noColor) return "";  return EthGray "..."; }
 #endif
 
 LogOutputStreamBase::LogOutputStreamBase(char const* _id, std::type_info const* _info, unsigned _v, bool _autospacing):
@@ -102,8 +116,14 @@ LogOutputStreamBase::LogOutputStreamBase(char const* _id, std::type_info const* 
         static char const* c_sep1 = EthReset EthBlack "|" EthNavy;
         static char const* c_sep2 = EthReset EthBlack "|" EthTeal;
         static char const* c_end = EthReset "  ";
-        m_sstr << _id << c_begin << buf << "." << setw(3) << setfill('0') << ms;
-        m_sstr << c_sep1 << getThreadName() << ThreadContext::join(c_sep2) << c_end;
+		if(g_noColor){
+			m_sstr << buf << "." << setw(3) << setfill('0') << ms;
+			m_sstr << "| " << getThreadName() << ThreadContext::join("| ") << "  ";
+		}else{
+			m_sstr << _id << c_begin << buf << "." << setw(3) << setfill('0') << ms;
+			m_sstr << c_sep1 << getThreadName() << ThreadContext::join(c_sep2) << c_end;
+		}
+
     }
 }
 
@@ -187,5 +207,30 @@ void dev::setThreadName(string const& _n)
 
 void dev::debugOut(std::string const& _s)
 {
-    cerr << _s << '\n';
+	cerr << _s << '\n';
+	
+	if(g_noColor){
+		//src::severity_logger<severity_level> log;
+		src::logger_mt& lg = g_boostLog::get();
+		BOOST_LOG(lg) << _s;
+	}
 }
+
+std::string dev::logFileName(const char *file, int line, const char *fun, const char *t)
+{
+	const char *p = ::strrchr((char*)file, '/');
+	p = p ? p+1 : file;
+
+	char buf[1024];
+	snprintf(buf, sizeof(buf), "%s:%d:%s:%s::\t", p, line, fun, t);
+	
+	/*
+    int len = strlen(file);
+    while(--len >= 0){
+            if(file[len] == '/')
+                    return file + len + 1;
+    }*/
+
+    return std::string(buf);
+}
+

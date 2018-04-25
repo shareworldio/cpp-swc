@@ -34,6 +34,7 @@ namespace dev
 {
 
 class RLPStream;
+using namespace p2p;
 
 namespace eth
 {
@@ -42,49 +43,94 @@ class EthereumHost;
 class BlockQueue;
 class EthereumPeer;
 
+class BlockChainSyncInterface
+{
+public:
+	virtual void abortSync(){}; ///< Abort all sync activity
+
+	/// @returns true is Sync is in progress
+	virtual bool isSyncing() const{ return false;};
+
+	/// Restart sync
+	virtual void restartSync(){};
+
+	/// Called after all blocks have been downloaded
+	/// Public only for test mode
+	virtual void completeSync(){};
+
+	/// Called by peer to report status
+	virtual void onPeerStatus(std::shared_ptr<EthereumPeer> ){};
+
+	/// Called by peer once it has new block headers during sync
+	virtual void onPeerBlockHeaders(std::shared_ptr<EthereumPeer>, RLP const& ){};
+
+	/// Called by peer once it has new block bodies
+	virtual void onPeerBlockBodies(std::shared_ptr<EthereumPeer> , RLP const& ){};
+
+	/// Called by peer once it has new block bodies
+	virtual void onPeerNewBlock(std::shared_ptr<EthereumPeer> , RLP const& ){};
+
+	virtual void onPeerNewHashes(std::shared_ptr<EthereumPeer> , std::vector<std::pair<h256, u256>> const& ){};
+
+	/// Called by peer when it is disconnecting
+	virtual void onPeerAborting(){};
+
+	/// Called when a blockchain has imported a new block onto the DB
+	virtual void onBlockImported(BlockHeader const& ){};
+
+	/// @returns Synchonization status
+	virtual SyncStatus status() const{ struct SyncStatus stat; return stat;};
+
+	static char const* stateName(SyncState _s) { return s_stateNames[static_cast<int>(_s)]; };
+	
+private:
+	static char const* const s_stateNames[static_cast<int>(SyncState::Size)];
+
+};
+
 /**
  * @brief Base BlockChain synchronization strategy class.
  * Syncs to peers and keeps up to date. Base class handles blocks downloading but does not contain any details on state transfer logic.
  */
-class BlockChainSync final: public HasInvariants
+class BlockChainSync final: public BlockChainSyncInterface, public HasInvariants
 {
 public:
 	BlockChainSync(EthereumHost& _host);
 	~BlockChainSync();
-	void abortSync(); ///< Abort all sync activity
+	void abortSync() override; ///< Abort all sync activity
 
 	/// @returns true is Sync is in progress
-	bool isSyncing() const;
+	bool isSyncing() const override;
 
 	/// Restart sync
-	void restartSync();
+	void restartSync() override;
 
 	/// Called after all blocks have been downloaded
 	/// Public only for test mode
-	void completeSync();
+	void completeSync() override;
 
 	/// Called by peer to report status
-	void onPeerStatus(std::shared_ptr<EthereumPeer> _peer);
+	void onPeerStatus(std::shared_ptr<EthereumPeer> _peer) override;
 
 	/// Called by peer once it has new block headers during sync
-	void onPeerBlockHeaders(std::shared_ptr<EthereumPeer> _peer, RLP const& _r);
+	void onPeerBlockHeaders(std::shared_ptr<EthereumPeer> _peer, RLP const& _r) override;
 
 	/// Called by peer once it has new block bodies
-	void onPeerBlockBodies(std::shared_ptr<EthereumPeer> _peer, RLP const& _r);
+	void onPeerBlockBodies(std::shared_ptr<EthereumPeer> _peer, RLP const& _r) override;
 
 	/// Called by peer once it has new block bodies
-	void onPeerNewBlock(std::shared_ptr<EthereumPeer> _peer, RLP const& _r);
+	void onPeerNewBlock(std::shared_ptr<EthereumPeer> _peer, RLP const& _r) override;
 
-	void onPeerNewHashes(std::shared_ptr<EthereumPeer> _peer, std::vector<std::pair<h256, u256>> const& _hashes);
+	void onPeerNewHashes(std::shared_ptr<EthereumPeer> _peer, std::vector<std::pair<h256, u256>> const& _hashes) override;
 
 	/// Called by peer when it is disconnecting
-	void onPeerAborting();
+	void onPeerAborting() override;
 
 	/// Called when a blockchain has imported a new block onto the DB
-	void onBlockImported(BlockHeader const& _info);
+	void onBlockImported(BlockHeader const& _info) override;
 
 	/// @returns Synchonization status
-	SyncStatus status() const;
+	SyncStatus status() const override;
 
 	static char const* stateName(SyncState _s) { return s_stateNames[static_cast<int>(_s)]; }
 

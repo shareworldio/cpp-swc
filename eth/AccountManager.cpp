@@ -24,6 +24,11 @@
 #include <libdevcore/CommonIO.h>
 #include <libethcore/KeyManager.h>
 #include "AccountManager.h"
+
+#include <libdevcrypto/Common.h>
+#include <libdevcore/CommonJS.h>
+#include <libdevcore/Common.h>
+
 using namespace std;
 using namespace dev;
 using namespace dev::eth;
@@ -34,13 +39,33 @@ void AccountManager::streamAccountHelp(ostream& _out)
 		<< "    account list  List all keys available in wallet.\n"
 		<< "    account new	Create a new key and add it to the wallet.\n"
 		<< "    account update [<uuid>|<address> , ... ]  Decrypt and re-encrypt given keys.\n"
-		<< "    account import [<uuid>|<file>|<secret-hex>]	Import keys from given source and place in wallet.\n";
+		<< "    account import [<uuid>|<file>|<secret-hex>]	Import keys from given source and place in wallet.\n"
+		<< "    account key [secure]	Calculate keys from secure.\n";
 }
 
 void AccountManager::streamWalletHelp(ostream& _out)
 {
 	_out
 		<< "    wallet import <file>	Import a presale wallet.\n";
+}
+
+Address cal_address(string _key)
+{
+	if(_key == "")
+		_key = "1";
+
+	while(_key.length() < 32){
+		_key = _key + _key;
+	}
+
+	Secret sec(sha3(asBytes(_key.substr(0, 32))));
+	KeyPair pair(sec);
+
+	cout << "sec: " << toJS(sec) << "\n";
+	cout << "Public: " << toJS(pair.pub()) << "\n";
+	cout << "Address: " << pair.address() << "\n";
+	
+	return pair.address();
 }
 
 bool AccountManager::execute(int argc, char** argv)
@@ -188,6 +213,11 @@ bool AccountManager::execute(int argc, char** argv)
 				else
 					cerr << "Couldn't re-encode " << i << "; does not represent an address or uuid." << "\n";
 			}
+		}
+		else if (2 < argc && string(argv[2]) == "key")
+		{
+			string key = argv[3];
+			cal_address(key);
 		}
 		else
 			streamAccountHelp(cout);

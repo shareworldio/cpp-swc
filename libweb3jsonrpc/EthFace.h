@@ -37,6 +37,13 @@ namespace dev {
                     this->bindAndAddMethod(jsonrpc::Procedure("eth_getBlockByHash", jsonrpc::PARAMS_BY_POSITION, jsonrpc::JSON_OBJECT, "param1",jsonrpc::JSON_STRING,"param2",jsonrpc::JSON_BOOLEAN, NULL), &dev::rpc::EthFace::eth_getBlockByHashI);
                     this->bindAndAddMethod(jsonrpc::Procedure("eth_getBlockByNumber", jsonrpc::PARAMS_BY_POSITION, jsonrpc::JSON_OBJECT, "param1",jsonrpc::JSON_STRING,"param2",jsonrpc::JSON_BOOLEAN, NULL), &dev::rpc::EthFace::eth_getBlockByNumberI);
                     this->bindAndAddMethod(jsonrpc::Procedure("eth_getTransactionByHash", jsonrpc::PARAMS_BY_POSITION, jsonrpc::JSON_OBJECT, "param1",jsonrpc::JSON_STRING, NULL), &dev::rpc::EthFace::eth_getTransactionByHashI);
+
+					this->bindAndAddMethod(jsonrpc::Procedure("eth_listTransactions", jsonrpc::PARAMS_BY_POSITION, jsonrpc::JSON_STRING, "param1",jsonrpc::JSON_STRING,"param2",jsonrpc::JSON_STRING,"param3",jsonrpc::JSON_STRING, NULL), &dev::rpc::EthFace::eth_listTransactionsI);
+					this->bindAndAddMethod(jsonrpc::Procedure("eth_listTransactionReceipts", jsonrpc::PARAMS_BY_POSITION, jsonrpc::JSON_STRING, "param1",jsonrpc::JSON_STRING,"param2",jsonrpc::JSON_STRING,"param3",jsonrpc::JSON_STRING, NULL), &dev::rpc::EthFace::eth_listTransactionReceiptsI);	
+					this->bindAndAddMethod(jsonrpc::Procedure("eth_getNodes", jsonrpc::PARAMS_BY_POSITION, jsonrpc::JSON_STRING, "param1",jsonrpc::JSON_STRING, NULL), &dev::rpc::EthFace::eth_getNodesI);
+					this->bindAndAddMethod(jsonrpc::Procedure("eth_getNodeAddress", jsonrpc::PARAMS_BY_POSITION, jsonrpc::JSON_STRING, NULL), &dev::rpc::EthFace::eth_getNodeAddressI);
+					this->bindAndAddMethod(jsonrpc::Procedure("eth_getOwner", jsonrpc::PARAMS_BY_POSITION, jsonrpc::JSON_STRING, NULL), &dev::rpc::EthFace::eth_getOwnerI);
+	
                     this->bindAndAddMethod(jsonrpc::Procedure("eth_getTransactionByBlockHashAndIndex", jsonrpc::PARAMS_BY_POSITION, jsonrpc::JSON_OBJECT, "param1",jsonrpc::JSON_STRING,"param2",jsonrpc::JSON_STRING, NULL), &dev::rpc::EthFace::eth_getTransactionByBlockHashAndIndexI);
                     this->bindAndAddMethod(jsonrpc::Procedure("eth_getTransactionByBlockNumberAndIndex", jsonrpc::PARAMS_BY_POSITION, jsonrpc::JSON_OBJECT, "param1",jsonrpc::JSON_STRING,"param2",jsonrpc::JSON_STRING, NULL), &dev::rpc::EthFace::eth_getTransactionByBlockNumberAndIndexI);
                     this->bindAndAddMethod(jsonrpc::Procedure("eth_getTransactionReceipt", jsonrpc::PARAMS_BY_POSITION, jsonrpc::JSON_OBJECT, "param1",jsonrpc::JSON_STRING, NULL), &dev::rpc::EthFace::eth_getTransactionReceiptI);
@@ -139,6 +146,30 @@ namespace dev {
                 {
                     response = this->eth_getUncleCountByBlockNumber(request[0u].asString());
                 }
+				
+				inline virtual void eth_listTransactionsI(const Json::Value &request, Json::Value &response)
+                {
+                    response = this->eth_listTransactions(request[0u].asString(), request[1u].asString(), request[2u].asString());
+                }
+                inline virtual void eth_listTransactionReceiptsI(const Json::Value &request, Json::Value &response)
+                {
+                    response = this->eth_listTransactionReceipts(request[0u].asString(), request[1u].asString(), request[2u].asString());
+                }
+				inline virtual void eth_getNodesI(const Json::Value &request, Json::Value &response)
+                {
+                    response = this->eth_getNodes(request[0u].asString());
+                }
+				inline virtual void eth_getNodeAddressI(const Json::Value &request, Json::Value &response)
+                {
+                	(void)request;
+                    response = this->eth_getNodeAddress();
+                }
+				inline virtual void eth_getOwnerI(const Json::Value &request, Json::Value &response)
+                {
+                	(void)request;
+                    response = this->eth_getOwner();
+                }
+
                 inline virtual void eth_getCodeI(const Json::Value &request, Json::Value &response)
                 {
                     response = this->eth_getCode(request[0u].asString(), request[1u].asString());
@@ -297,6 +328,13 @@ namespace dev {
                 virtual std::string eth_getTransactionCount(const std::string& param1, const std::string& param2) = 0;
                 virtual std::string eth_pendingTransactions() = 0;
                 virtual Json::Value eth_getBlockTransactionCountByHash(const std::string& param1) = 0;
+				
+				virtual Json::Value eth_listTransactions(std::string const& _from, std::string const& _nonce, std::string const& _count) = 0;
+				virtual Json::Value eth_listTransactionReceipts(std::string const& _from, std::string const& _nonce, std::string const& _count) = 0;
+				virtual std::string eth_getNodes(std::string const& _node) = 0;
+				virtual std::string eth_getNodeAddress() = 0;
+				virtual std::string eth_getOwner() = 0;
+	
                 virtual Json::Value eth_getBlockTransactionCountByNumber(const std::string& param1) = 0;
                 virtual Json::Value eth_getUncleCountByBlockHash(const std::string& param1) = 0;
                 virtual Json::Value eth_getUncleCountByBlockNumber(const std::string& param1) = 0;

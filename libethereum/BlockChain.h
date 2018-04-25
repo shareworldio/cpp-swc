@@ -91,7 +91,8 @@ enum {
     ExtraTransactionAddress,
     ExtraLogBlooms,
     ExtraReceipts,
-    ExtraBlocksBlooms
+    ExtraBlocksBlooms,
+    ExtraAccountsIndexAddress
 };
 
 using ProgressCallback = std::function<void(unsigned, unsigned)>;
@@ -176,6 +177,7 @@ public:
 
     /// Get the transaction receipt by transaction hash. Thread-safe.
     TransactionReceipt transactionReceipt(h256 const& _transactionHash) const { TransactionAddress ta = queryExtras<TransactionAddress, ExtraTransactionAddress>(_transactionHash, m_transactionAddresses, x_transactionAddresses, NullTransactionAddress); if (!ta) return bytesConstRef(); return transactionReceipt(ta.blockHash, ta.index); }
+	TransactionReceipt transactionReceipt(Address const& _from, u256 const& _nonce) const { TransactionAddress ta = queryExtras<TransactionAddress, ExtraAccountsIndexAddress>(sha3(rlpList(_from, _nonce)), m_accountsIndexAddress, x_accountsIndexAddress, NullTransactionAddress); if (!ta) return bytesConstRef(); return transactionReceipt(ta.blockHash, ta.index); }
 
     /// Get a list of transaction hashes for a given block. Thread-safe.
     TransactionHashes transactionHashes(h256 const& _hash) const { auto b = block(_hash); RLP rlp(b); h256s ret; for (auto t: rlp[1]) ret.push_back(sha3(t.data())); return ret; }
@@ -216,9 +218,11 @@ public:
     /// Get a transaction from its hash. Thread-safe.
     bytes transaction(h256 const& _transactionHash) const { TransactionAddress ta = queryExtras<TransactionAddress, ExtraTransactionAddress>(_transactionHash, m_transactionAddresses, x_transactionAddresses, NullTransactionAddress); if (!ta) return bytes(); return transaction(ta.blockHash, ta.index); }
     std::pair<h256, unsigned> transactionLocation(h256 const& _transactionHash) const { TransactionAddress ta = queryExtras<TransactionAddress, ExtraTransactionAddress>(_transactionHash, m_transactionAddresses, x_transactionAddresses, NullTransactionAddress); if (!ta) return std::pair<h256, unsigned>(h256(), 0); return std::make_pair(ta.blockHash, ta.index); }
+	std::pair<h256, unsigned> transactionLocation(Address const& _from, u256 const& _nonce) const { TransactionAddress ta = queryExtras<TransactionAddress, ExtraAccountsIndexAddress>(sha3(rlpList(_from, _nonce)), m_accountsIndexAddress, x_accountsIndexAddress, NullTransactionAddress); if (!ta) return std::pair<h256, unsigned>(h256(), 0); return std::make_pair(ta.blockHash, ta.index); }
 
     /// Get a block's transaction (RLP format) for the given block hash (or the most recent mined if none given) & index. Thread-safe.
     bytes transaction(h256 const& _blockHash, unsigned _i) const { bytes b = block(_blockHash); return RLP(b)[1][_i].data().toBytes(); }
+	bytes transaction(Address const& _from, u256 const& _nonce) const { cdebug << "_from=" << _from << ",_nonce=" << _nonce << "sha3(rlpList(_from, _nonce)=" << sha3(rlpList(_from, _nonce)); TransactionAddress ta = queryExtras<TransactionAddress, ExtraAccountsIndexAddress>(sha3(rlpList(_from, _nonce)), m_accountsIndexAddress, x_accountsIndexAddress, NullTransactionAddress); if (!ta) return bytes(); return transaction(ta.blockHash, ta.index); }
     bytes transaction(unsigned _i) const { return transaction(currentHash(), _i); }
 
     /// Get all transactions from a block.
@@ -386,6 +390,8 @@ private:
     mutable BlockHashHash m_blockHashes;
     mutable SharedMutex x_blocksBlooms;
     mutable BlocksBloomsHash m_blocksBlooms;
+	mutable SharedMutex x_accountsIndexAddress;
+    mutable TransactionAddressHash m_accountsIndexAddress;
 
     using CacheID = std::pair<h256, unsigned>;
     mutable Mutex x_cacheUsage;

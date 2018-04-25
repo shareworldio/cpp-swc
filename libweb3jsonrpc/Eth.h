@@ -79,6 +79,13 @@ public:
 	virtual std::string eth_getTransactionCount(std::string const& _address, std::string const& _blockNumber) override;
 	virtual std::string eth_pendingTransactions() override;
 	virtual Json::Value eth_getBlockTransactionCountByHash(std::string const& _blockHash) override;
+	
+	virtual Json::Value eth_listTransactions(std::string const& _from, std::string const& _nonce, std::string const& _count) override;
+	virtual Json::Value eth_listTransactionReceipts(std::string const& _from, std::string const& _nonce, std::string const& _count) override;
+	virtual std::string eth_getNodes(std::string const& _node) override;
+	virtual std::string eth_getNodeAddress() override;
+	virtual std::string eth_getOwner() override;
+	
 	virtual Json::Value eth_getBlockTransactionCountByNumber(std::string const& _blockNumber) override;
 	virtual Json::Value eth_getUncleCountByBlockHash(std::string const& _blockHash) override;
 	virtual Json::Value eth_getUncleCountByBlockNumber(std::string const& _blockNumber) override;

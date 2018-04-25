@@ -42,7 +42,7 @@ StringHashMap BasicAuthority::jsInfo(BlockHeader const& _bi) const
 
 bool BasicAuthority::shouldSeal(Interface* _i)
 {
-	return _i->pendingInfo().timestamp() + 5 <= utcTime() || (_i->pendingInfo().timestamp() <= utcTime() && !_i->pending().empty());
+	return _i->pendingInfo().timestamp() + 5 * TIME_PER_SECOND <= utcTime() || (_i->pendingInfo().timestamp() <= utcTime() && !_i->pending().empty());
 }
 
 void BasicAuthority::generateSeal(BlockHeader const& _bi)

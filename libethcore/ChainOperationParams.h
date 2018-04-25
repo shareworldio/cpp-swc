@@ -104,6 +104,9 @@ public:
 
 	/// Precompiled contracts as specified in the chain params.
 	std::unordered_map<Address, PrecompiledContract> precompiled;
+
+	std::map<std::string, std::string> otherParams;
+	u256 u256Param(std::string const& _name) const;
 };
 
 }

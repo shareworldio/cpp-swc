@@ -108,7 +108,7 @@ public:
 
     /// Makes the given call. Nothing is recorded into the state.
     virtual ExecutionResult call(Address const& _secret, u256 _value, Address _dest, bytes const& _data, u256 _gas, u256 _gasPrice, BlockNumber _blockNumber, FudgeFactor _ff = FudgeFactor::Strict) override;
-
+	
     /// Blocks until all pending transactions have been processed.
     virtual void flushTransactions() override;
 
@@ -213,6 +213,11 @@ public:
     /// should be called after the constructor of the most derived class finishes.
     void startWorking() { Worker::startWorking(); };
 
+	virtual bytes call(Address _dest, bytes const& _data) override;
+	void onImprted(Address _contrant, std::function< void() > _f);
+	virtual std::string getNodes(std::string const& _node) override;
+	virtual std::string getNodeAddress()        const override;   
+	virtual std::string getOwner()     override;
 protected:
     /// Perform critical setup functions.
     /// Must be called in the constructor of the finally derived class.
@@ -256,7 +261,7 @@ protected:
     void doneWorking() override;
 
     /// Called when wouldSeal(), pendingTransactions() have changed.
-    void rejigSealing();
+    virtual void rejigSealing();
 
     /// Called on chain changes
     void onDeadBlocks(h256s const& _blocks, h256Hash& io_changed);
@@ -281,10 +286,10 @@ protected:
     void syncTransactionQueue();
 
     /// Magically called when m_tq needs syncing. Be nice and don't block.
-    void onTransactionQueueReady() { m_syncTransactionQueue = true; m_signalled.notify_all(); }
+    void onTransactionQueueReady();
 
     /// Magically called when m_bq needs syncing. Be nice and don't block.
-    void onBlockQueueReady() { m_syncBlockQueue = true; m_signalled.notify_all(); }
+    void onBlockQueueReady();
 
     /// Called when the post state has changed (i.e. when more transactions are in it or we're sealing on a new block).
     /// This updates m_sealingInfo.
@@ -347,10 +352,13 @@ protected:
     SharedMutex x_functionQueue;
     std::queue<std::function<void()>> m_functionQueue;  ///< Functions waiting to be executed in the main thread.
 
-    std::atomic<bool> m_syncTransactionQueue = {false};
-    std::atomic<bool> m_syncBlockQueue = {false};
+    ConsumerSingal m_syncTransactionQueue;
+	ConsumerSingal m_syncBlockQueue;
 
     bytes m_extraData;
+
+	RecursiveMutex x_onImprted;
+	std::map<Address, std::vector< std::function< void() > > > m_onImprted;
 };
 
 }

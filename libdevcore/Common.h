@@ -37,6 +37,11 @@
 #pragma warning(disable:3682) //call through incomplete class
 #endif
 
+#include <atomic>
+
+#include <execinfo.h>
+#include <cxxabi.h>
+
 #include <map>
 #include <unordered_map>
 #include <vector>
@@ -304,6 +309,45 @@ enum class WithExisting: int
 };
 
 /// Get the current time in seconds since the epoch in UTC
+#define TIME_PER_SECOND 1000000
 int64_t utcTime();
+
+void DumpStack(void);
+class ConsumerSingal
+{
+
+public:
+	ConsumerSingal(){};
+	bool consumer(){
+		while(1){ 
+			int count = m_count;
+			if(count>0){
+				if(m_count.compare_exchange_strong(count, count-1))
+					return true;
+			}else{
+				return false;
+			}
+		}
+		return true;
+	}
+	bool consumerAll(){
+		while(1){ 
+			int count = m_count;
+			if(count>0){
+				if(m_count.compare_exchange_strong(count, 0))
+					return true;
+			}else{
+				return false;
+			}
+		}
+		return true;
+	}
+	void production(){m_count.fetch_add(1);}
+	//opetaror bool(){return m_count >= 0;}
+	operator bool(){return m_count > 0;}
+	operator int(){return m_count;}
+private:
+	std::atomic_int m_count = ATOMIC_VAR_INIT(0);
+};
 
 }

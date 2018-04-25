@@ -249,8 +249,11 @@ string Eth::eth_sendTransaction(Json::Value const& _json)
 	try
 	{
 		TransactionSkeleton t = toTransactionSkeleton(_json);
+		cdebug << "_json=" << _json;
+		class Timer timer;
 		setTransactionDefaults(t);
 		TransactionNotification n = m_ethAccounts.authenticate(t);
+		cdebug << "n.hash=" << toJS(n.hash) << "_json=" << _json << "timer.elapsed()=" << timer.elapsed();;
 		switch (n.r)
 		{
 		case TransactionRepercussion::Success:
@@ -322,6 +325,7 @@ string Eth::eth_sendRawTransaction(std::string const& _rlp)
 		if (client()->injectTransaction(jsToBytes(_rlp, OnFailed::Throw)) == ImportResult::Success)
 		{
 			Transaction tx(jsToBytes(_rlp, OnFailed::Throw), CheckTransaction::None);
+			cdebug << "toJS(tx.sha3())=" << toJS(tx.sha3()) << "_rlp=" << _rlp;
 			return toJS(tx.sha3());
 		}
 		else
@@ -340,7 +344,9 @@ string Eth::eth_call(Json::Value const& _json, string const& _blockNumber)
 		TransactionSkeleton t = toTransactionSkeleton(_json);
 		setTransactionDefaults(t);
 		ExecutionResult er = client()->call(t.from, t.value, t.to, t.data, t.gas, t.gasPrice, jsToBlockNumber(_blockNumber), FudgeFactor::Lenient);
-		return toJS(er.output);
+		std::string ret = toJS(er.output);
+		cdebug << "_json=" << _json << ",ret=" << ret;
+		return ret;
 	}
 	catch (...)
 	{
@@ -421,6 +427,55 @@ Json::Value Eth::eth_getTransactionByHash(string const& _transactionHash)
 	{
 		BOOST_THROW_EXCEPTION(JsonRpcException(Errors::ERROR_RPC_INVALID_PARAMS));
 	}
+}
+
+Json::Value Eth::eth_listTransactions(string const& _from, string const& _nonce, string const& _count)
+{
+	try
+	{
+		Json::Value value = toJson(client()->ListTransactions(jsToAddress(_from), jsToU256(_nonce), jsToInt(_count)));
+		Json::FastWriter writer;  
+		std::string out = writer.write(value);  
+
+		cdebug << "_from=" << _from << ",_nonce=" << _nonce << ",_count=" << _count << ",out=" << out;
+		return value;
+	}
+	catch (...)
+	{
+		BOOST_THROW_EXCEPTION(JsonRpcException(Errors::ERROR_RPC_INVALID_PARAMS));
+	}
+}
+
+Json::Value Eth::eth_listTransactionReceipts(string const& _from, string const& _nonce, string const& _count)
+{
+	try
+	{
+		Json::Value value = toJson(client()->ListTransactionReceipts(jsToAddress(_from), jsToU256(_nonce), jsToInt(_count)));
+		Json::FastWriter writer;  
+		std::string out = writer.write(value);  
+
+		cdebug << "_from=" << _from << ",_nonce=" << _nonce << ",_count=" << _count << ",out=" << out;
+		return value;
+	}
+	catch (...)
+	{
+		BOOST_THROW_EXCEPTION(JsonRpcException(Errors::ERROR_RPC_INVALID_PARAMS));
+	}
+}
+
+std::string Eth::eth_getNodes(string const& _node)
+{
+	return client()->getNodes(_node);
+}
+
+std::string Eth::eth_getNodeAddress()
+{
+	return client()->getNodeAddress();
+}
+
+std::string Eth::eth_getOwner()
+{
+	return client()->getOwner();
 }
 
 Json::Value Eth::eth_getTransactionByBlockHashAndIndex(string const& _blockHash, string const& _transactionIndex)

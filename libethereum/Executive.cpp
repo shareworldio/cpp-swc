@@ -169,7 +169,9 @@ Executive::Executive(State& io_s, Block const& _block, unsigned _txIndex, BlockC
 
 u256 Executive::gasUsed() const
 {
+	assert(m_t.gas() >= m_gas);
     return m_t.gas() - m_gas;
+	return m_t.gas() > m_gas ? m_t.gas() - m_gas : 0;
 }
 
 void Executive::accrueSubState(SubState& _parentContext)
@@ -213,17 +215,21 @@ void Executive::initialize(Transaction const& _transaction)
             BOOST_THROW_EXCEPTION(InvalidNonce() << RequirementError((bigint)nonceReq, (bigint)m_t.nonce()));
         }
 
-        // Avoid unaffordable transactions.
-        bigint gasCost = (bigint)m_t.gas() * m_t.gasPrice();
-        bigint totalCost = m_t.value() + gasCost;
-        if (m_s.balance(m_t.sender()) < totalCost)
-        {
-            clog(ExecutiveWarnChannel) << "Not enough cash: Require >" << totalCost << "=" << m_t.gas() << "*" << m_t.gasPrice() << "+" << m_t.value() << " Got" << m_s.balance(m_t.sender()) << "for sender: " << m_t.sender();
-            m_excepted = TransactionException::NotEnoughCash;
-            BOOST_THROW_EXCEPTION(NotEnoughCash() << RequirementError(totalCost, (bigint)m_s.balance(m_t.sender())) << errinfo_comment(m_t.sender().hex()));
-        }
-        m_gasCost = (u256)gasCost;  // Convert back to 256-bit, safe now.
-    }
+		// Avoid unaffordable transactions.
+		bigint gasCost = (bigint)m_t.gas() * m_t.gasPrice();
+		bigint totalCost = m_t.value() + gasCost;
+		if (m_baseGasRequired > m_t.gas() || m_s.balance(m_t.sender()) < totalCost)
+		{
+			if(m_baseGasRequired > m_t.gas())
+				clog(ExecutiveWarnChannel) << "Not enough cash: Require:m_baseGasRequired" << m_baseGasRequired << "> m_t.gas()" << m_t.gas();
+			else
+				clog(ExecutiveWarnChannel) << "Not enough cash: Require >" << totalCost << "=" << m_t.gas() << "*" << m_t.gasPrice() << "+" << m_t.value() << " Got" << m_s.balance(m_t.sender()) << "for sender: " << m_t.sender();
+			m_excepted = TransactionException::NotEnoughCash;
+			BOOST_THROW_EXCEPTION(NotEnoughCash() << RequirementError(totalCost, (bigint)m_s.balance(m_t.sender())) << errinfo_comment(m_t.sender().hex()));
+		}
+		m_gasCost = (u256)gasCost;  // Convert back to 256-bit, safe now.
+		cdebug << "gasCost=" << gasCost << ",m_t.gas()=" << m_t.gas() << ",m_t.gasPrice()=" << m_t.gasPrice() << ",m_t.value()=" << m_t.value() << ",m_baseGasRequired=" << m_baseGasRequired;
+	}
 }
 
 bool Executive::execute()

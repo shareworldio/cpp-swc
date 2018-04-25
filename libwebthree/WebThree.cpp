@@ -28,6 +28,10 @@
 #include <libethashseal/EthashClient.h>
 #include "BuildInfo.h"
 #include <libethashseal/Ethash.h>
+
+#include <libqpos/Qpos.h>
+#include <libqpos/QposClient.h>
+
 using namespace std;
 using namespace dev;
 using namespace dev::p2p;
@@ -48,9 +52,13 @@ WebThreeDirect::WebThreeDirect(std::string const& _clientVersion,
     {
         Ethash::init();
         NoProof::init();
+		Qpos::init();
+		
         if (_params.sealEngineName == "Ethash")
             m_ethereum.reset(new eth::EthashClient(_params, (int)_params.networkID, &m_net, shared_ptr<GasPricer>(), _dbPath, _snapshotPath, _we));
-        else if (_params.sealEngineName == "NoProof" && _testing)
+        else if (_params.sealEngineName == "QPOS") {
+			m_ethereum.reset(new eth::QposClient(_params, (int)_params.u256Param("networkID"), &m_net, shared_ptr<GasPricer>(), _dbPath, _snapshotPath, _we));
+		}else if (_params.sealEngineName == "NoProof" && _testing)
             m_ethereum.reset(new eth::ClientTest(_params, (int)_params.networkID, &m_net, shared_ptr<GasPricer>(), _dbPath, _we));
         else
             m_ethereum.reset(new eth::Client(_params, (int)_params.networkID, &m_net, shared_ptr<GasPricer>(), _dbPath, _snapshotPath, _we));

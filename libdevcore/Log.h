@@ -35,9 +35,11 @@ namespace dev
 
 /// A simple log-output function that prints log messages to stdout.
 void debugOut(std::string const& _s);
+void setRecordLog(bool _log);
 
 /// The logging system's current verbosity.
 extern int g_logVerbosity;
+extern int g_noColor;
 
 class LogOverrideAux
 {
@@ -134,105 +136,171 @@ class LogOutputStreamBase
 public:
     LogOutputStreamBase(char const* _id, std::type_info const* _info, unsigned _v, bool _autospacing);
 
-    void comment(std::string const& _t)
-    {
-        switch (m_logTag)
-        {
-        case LogTag::Url: m_sstr << EthNavyUnder; break;
-        case LogTag::Error: m_sstr << EthRedBold; break;
-        case LogTag::Special: m_sstr << EthWhiteBold; break;
-        default:;
-        }
-        m_sstr << _t << EthReset;
-        m_logTag = LogTag::None;
-    }
+	void comment(std::string const& _t)
+	{
+		if(g_noColor){
+			m_sstr << _t; 
+			m_logTag = LogTag::None;
+			return;
+		}
+		
+		switch (m_logTag)
+		{
+		case LogTag::Url: m_sstr << EthNavyUnder; break;
+		case LogTag::Error: m_sstr << EthRedBold; break;
+		case LogTag::Special: m_sstr << EthWhiteBold; break;
+		default:;
+		}
+		m_sstr << _t << EthReset;
+		m_logTag = LogTag::None;
+	}
 
-    void append(unsigned long _t) { m_sstr << EthBlue << _t << EthReset; }
-    void append(long _t) { m_sstr << EthBlue << _t << EthReset; }
-    void append(unsigned int _t) { m_sstr << EthBlue << _t << EthReset; }
-    void append(int _t) { m_sstr << EthBlue << _t << EthReset; }
-    void append(bigint const& _t) { m_sstr << EthNavy << _t << EthReset; }
-    void append(u256 const& _t) { m_sstr << EthNavy << _t << EthReset; }
-    void append(u160 const& _t) { m_sstr << EthNavy << _t << EthReset; }
-    void append(double _t) { m_sstr << EthBlue << _t << EthReset; }
-    template <unsigned N> void append(FixedHash<N> const& _t) { m_sstr << EthTeal "#" << _t.abridged() << EthReset; }
-    void append(h160 const& _t) { m_sstr << EthRed "@" << _t.abridged() << EthReset; }
-    void append(h256 const& _t) { m_sstr << EthCyan "#" << _t.abridged() << EthReset; }
-    void append(h512 const& _t) { m_sstr << EthTeal "##" << _t.abridged() << EthReset; }
-    void append(std::string const& _t) { m_sstr << EthGreen "\"" + _t + "\"" EthReset; }
-    void append(bytes const& _t) { m_sstr << EthYellow "%" << toHex(_t) << EthReset; }
-    void append(bytesConstRef _t) { m_sstr << EthYellow "%" << toHex(_t) << EthReset; }
-    template <class T> void append(std::vector<T> const& _t)
-    {
-        m_sstr << EthWhite "[" EthReset;
-        int n = 0;
-        for (T const& i: _t)
-        {
-            m_sstr << (n++ ? EthWhite ", " EthReset : "");
-            append(i);
-        }
-        m_sstr << EthWhite "]" EthReset;
-    }
-    template <class T> void append(std::set<T> const& _t)
-    {
-        m_sstr << EthYellow "{" EthReset;
-        int n = 0;
-        for (T const& i: _t)
-        {
-            m_sstr << (n++ ? EthYellow ", " EthReset : "");
-            append(i);
-        }
-        m_sstr << EthYellow "}" EthReset;
-    }
-    template <class T, class U> void append(std::map<T, U> const& _t)
-    {
-        m_sstr << EthLime "{" EthReset;
-        int n = 0;
-        for (auto const& i: _t)
-        {
-            m_sstr << (n++ ? EthLime ", " EthReset : "");
-            append(i.first);
-            m_sstr << (n++ ? EthLime ": " EthReset : "");
-            append(i.second);
-        }
-        m_sstr << EthLime "}" EthReset;
-    }
-    template <class T> void append(std::unordered_set<T> const& _t)
-    {
-        m_sstr << EthYellow "{" EthReset;
-        int n = 0;
-        for (T const& i: _t)
-        {
-            m_sstr << (n++ ? EthYellow ", " EthReset : "");
-            append(i);
-        }
-        m_sstr << EthYellow "}" EthReset;
-    }
-    template <class T, class U> void append(std::unordered_map<T, U> const& _t)
-    {
-        m_sstr << EthLime "{" EthReset;
-        int n = 0;
-        for (auto const& i: _t)
-        {
-            m_sstr << (n++ ? EthLime ", " EthReset : "");
-            append(i.first);
-            m_sstr << (n++ ? EthLime ": " EthReset : "");
-            append(i.second);
-        }
-        m_sstr << EthLime "}" EthReset;
-    }
-    template <class T, class U> void append(std::pair<T, U> const& _t)
-    {
-        m_sstr << EthPurple "(" EthReset;
-        append(_t.first);
-        m_sstr << EthPurple ", " EthReset;
-        append(_t.second);
-        m_sstr << EthPurple ")" EthReset;
-    }
-    template <class T> void append(T const& _t)
-    {
-        m_sstr << toString(_t);
-    }
+	void append(unsigned long _t) { if(g_noColor){m_sstr << _t;return;} m_sstr << EthBlue << _t << EthReset; }
+	void append(long _t) { if(g_noColor){m_sstr << _t;return;} m_sstr << EthBlue << _t << EthReset; }
+	void append(unsigned int _t) { if(g_noColor){m_sstr << _t;return;} m_sstr << EthBlue << _t << EthReset; }
+	void append(int _t) { if(g_noColor){m_sstr << _t;return;} m_sstr << EthBlue << _t << EthReset; }
+	void append(bigint const& _t) { if(g_noColor){m_sstr << _t;return;} m_sstr << EthNavy << _t << EthReset; }
+	void append(u256 const& _t) { if(g_noColor){m_sstr << _t;return;} m_sstr << EthNavy << _t << EthReset; }
+	void append(u160 const& _t) { if(g_noColor){m_sstr << _t;return;} m_sstr << EthNavy << _t << EthReset; }
+	void append(double _t) { if(g_noColor){m_sstr << _t;return;} m_sstr << EthBlue << _t << EthReset; }
+	template <unsigned N> void append(FixedHash<N> const& _t) { if(g_noColor){m_sstr << "#" << _t.abridged();return;} m_sstr << EthTeal "#" << _t.abridged() << EthReset; }
+	void append(h160 const& _t) { if(g_noColor){m_sstr << "@" << _t.abridged();return;} m_sstr << EthRed "@" << _t.abridged() << EthReset; }
+	void append(h256 const& _t) { if(g_noColor){m_sstr << "#" << _t.abridged();return;} m_sstr << EthCyan "#" << _t.abridged() << EthReset; }
+	void append(h512 const& _t) { if(g_noColor){m_sstr << "##" << _t.abridged();return;} m_sstr << EthTeal "##" << _t.abridged() << EthReset; }
+	void append(std::string const& _t) { if(g_noColor){m_sstr << "\"" + _t + "\"";;return;} m_sstr << EthGreen "\"" + _t + "\"" EthReset; }
+	void append(bytes const& _t) { if(g_noColor){m_sstr << "%" << toHex(_t);return;} m_sstr << EthYellow "%" << toHex(_t) << EthReset; }
+	void append(bytesConstRef _t) { if(g_noColor){m_sstr << "%" << toHex(_t);return;} m_sstr << EthYellow "%" << toHex(_t) << EthReset; }
+	template <class T> void append(std::vector<T> const& _t)
+	{
+		if(g_noColor)
+			m_sstr << "[";
+		else
+			m_sstr << EthWhite "[" EthReset;
+		int n = 0;
+		for (T const& i: _t)
+		{
+			if(g_noColor)
+				m_sstr << (n++ ? ", " : "");
+			else
+				m_sstr << (n++ ? EthWhite ", " EthReset : "");
+			append(i);
+		}
+		if(g_noColor)
+			m_sstr << "]";
+		else
+			m_sstr << EthWhite "]" EthReset;
+	}
+	template <class T> void append(std::set<T> const& _t)
+	{
+		if(g_noColor)
+			m_sstr << "{";
+		else
+			m_sstr << EthYellow "{" EthReset;
+		int n = 0;
+		for (T const& i: _t)
+		{
+			if(g_noColor)
+				m_sstr << (n++ ? ", " : "");
+			else
+				m_sstr << (n++ ? EthYellow ", " EthReset : "");
+			append(i);
+		}
+		if(g_noColor)
+			m_sstr <<  "}";
+		else
+			m_sstr << EthYellow "}" EthReset;
+	}
+	template <class T, class U> void append(std::map<T, U> const& _t)
+	{
+		if(g_noColor)
+			m_sstr << "{";
+		else
+			m_sstr << EthLime "{" EthReset;
+		int n = 0;
+		for (auto const& i: _t)
+		{
+			if(g_noColor)
+				m_sstr << (n++ ? ", " : "");
+			else
+				m_sstr << (n++ ? EthLime ", " EthReset : "");
+			append(i.first);
+			if(g_noColor)
+				m_sstr << (n++ ? ": " : "");
+			else
+				m_sstr << (n++ ? EthLime ": " EthReset : "");
+			append(i.second);
+		}
+		if(g_noColor)
+			m_sstr << "}";
+		else
+			m_sstr << EthLime "}" EthReset;
+	}
+	template <class T> void append(std::unordered_set<T> const& _t)
+	{
+		if(g_noColor)
+			m_sstr << "{";
+		else
+			m_sstr << EthYellow "{" EthReset;
+		int n = 0;
+		for (T const& i: _t)
+		{
+			if(g_noColor)
+				m_sstr << (n++ ? ", " : "");
+			else
+				m_sstr << (n++ ? EthYellow ", " EthReset : "");
+			append(i);
+		}
+		if(g_noColor)
+			m_sstr << "}";
+		else
+			m_sstr << EthYellow "}" EthReset;
+	}
+	template <class T, class U> void append(std::unordered_map<T, U> const& _t)
+	{
+		if(g_noColor)
+			m_sstr << "{";
+		else
+			m_sstr << EthLime "{" EthReset;
+		int n = 0;
+		for (auto const& i: _t)
+		{
+			if(g_noColor)
+				m_sstr << (n++ ? ", " : "");
+			else
+				m_sstr << (n++ ? EthLime ", " EthReset : "");
+			append(i.first);
+			if(g_noColor)
+				m_sstr << (n++ ? ": " : "");
+			else
+				m_sstr << (n++ ? EthLime ": " EthReset : "");
+			append(i.second);
+		}
+		if(g_noColor)
+			m_sstr << "}";
+		else
+			m_sstr << EthLime "}" EthReset;
+	}
+	template <class T, class U> void append(std::pair<T, U> const& _t)
+	{
+		if(g_noColor)
+			m_sstr << "(";
+		else
+			m_sstr << EthPurple "(" EthReset;
+		append(_t.first);
+		if(g_noColor)
+			m_sstr << ", ";
+		else
+			m_sstr << EthPurple ", " EthReset;
+		append(_t.second);
+		if(g_noColor)
+			m_sstr << ")";
+		else
+			m_sstr << EthPurple ")" EthReset;
+	}
+	template <class T> void append(T const& _t)
+	{
+		m_sstr << toString(_t);
+	}
 
 protected:
     bool m_autospacing = false;
@@ -261,6 +329,9 @@ public:
     template <class T> LogOutputStream& operator<<(T const& _t) { if (Id::verbosity <= g_logVerbosity) { if (_AutoSpacing && m_sstr.str().size() && m_sstr.str().back() != ' ') m_sstr << " "; append(_t); } return *this; }
 };
 
+std::string logFileName(const char *file, int line, const char *fun, const char *t);
+#define LOG_INFO logFileName((const char*)__FILE__, __LINE__, (const char*)__FUNCTION__, (const char*)__TIMESTAMP__)
+
 /// A "hacky" way to execute the next statement on COND.
 /// We need such a thing due to the dangling else problem and the need
 /// for the logging macros to end with the stream object and not a closing brace '}'
@@ -271,15 +342,15 @@ public:
 #define DEV_STATEMENT_SKIP() while (/*CONSTCOND*/ false) /*NOTREACHED*/
 // Kill all logs when when NLOG is defined.
 #if NLOG
-#define clog(X) nlog(X)
-#define cslog(X) nslog(X)
+#define clog(X) (nlog(X)<<LOG_INFO)
+#define cslog(X) (nslog(X)<<LOG_INFO)
 #else
 #if NDEBUG
-#define clog(X) DEV_STATEMENT_IF(!(X::debug)) dev::LogOutputStream<X, true>()
-#define cslog(X) DEV_STATEMENT_IF(!(X::debug)) dev::LogOutputStream<X, false>()
+#define clog(X) ((DEV_STATEMENT_IF(!(X::debug)) dev::LogOutputStream<X, true>())<<LOG_INFO))
+#define cslog(X) ((DEV_STATEMENT_IF(!(X::debug)) dev::LogOutputStream<X, false>())<<LOG_INFO))
 #else
-#define clog(X) dev::LogOutputStream<X, true>()
-#define cslog(X) dev::LogOutputStream<X, false>()
+#define clog(X) (dev::LogOutputStream<X, true>()<<LOG_INFO)
+#define cslog(X) (dev::LogOutputStream<X, false>()<<LOG_INFO)
 #endif
 #endif
 

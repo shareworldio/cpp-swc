@@ -636,7 +636,7 @@ void BlockChain::insert(VerifiedBlockRef _block, bytesConstRef _receipts, bool _
 ImportRoute BlockChain::import(VerifiedBlockRef const& _block, OverlayDB const& _db, bool _mustBeNew)
 {
     //@tidy This is a behemoth of a method - could do to be split into a few smaller ones.
-
+	class Timer timer;
     ImportPerformanceLogger performanceLogger;
 
     // Check block doesn't already exist first!
@@ -712,7 +712,9 @@ ImportRoute BlockChain::import(VerifiedBlockRef const& _block, OverlayDB const& 
 
     // All ok - insert into DB
     bytes const receipts = br.rlp();
-    return insertBlockAndExtras(_block, ref(receipts), td, performanceLogger);
+    auto ret = insertBlockAndExtras(_block, ref(receipts), td, performanceLogger);
+	cdebug << "timer.elapsed()=" << timer.elapsed();
+	return ret;
 }
 
 ImportRoute BlockChain::insertWithoutParent(bytes const& _block, bytesConstRef _receipts, u256 const& _totalDifficulty)
@@ -848,10 +850,18 @@ ImportRoute BlockChain::insertBlockAndExtras(VerifiedBlockRef const& _block, byt
                 RLP blockRLP(*i == _block.info.hash() ? _block.block : &(blockBytes = block(*i)));
                 TransactionAddress ta;
                 ta.blockHash = tbi.hash();
-                for (ta.index = 0; ta.index < blockRLP[1].itemCount(); ++ta.index)
+                for (ta.index = 0; ta.index < blockRLP[1].itemCount(); ++ta.index){
+					Transaction t(blockRLP[1][ta.index].data(), CheckTransaction::None);
+					cdebug << "t.from()=" << t.from() << ",t.nonce()=" << t.nonce() << "sha3(rlpList(_from, _nonce)=" << sha3(rlpList(t.from(), t.nonce()));
+					extrasWriteBatch->insert(
+                        toSlice(sha3(rlpList(t.from(), t.nonce())), ExtraAccountsIndexAddress),
+                        (db::Slice)dev::ref(ta.rlp()));
+				
                     extrasWriteBatch->insert(
                         toSlice(sha3(blockRLP[1][ta.index].data()), ExtraTransactionAddress),
                         (db::Slice)dev::ref(ta.rlp()));
+					
+                }
             }
 
             // Update database with them.

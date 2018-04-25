@@ -129,3 +129,13 @@ bool ClientTest::completeSync()
     h->completeSync();
     return true;
 }
+
+bool ClientTest::wouldSeal() const
+{
+	bool empty = false;
+	DEV_READ_GUARDED(x_working)
+		empty = m_working.empty();
+
+	return !empty && Client::wouldSeal();
+}
+

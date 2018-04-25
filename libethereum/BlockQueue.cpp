@@ -356,8 +356,8 @@ void BlockQueue::tick()
 
 		cblockq << "Checking past-future blocks...";
 
-		time_t t = utcTime();
-		if (t < m_future.firstKey())
+		time_t t = utcTime()/TIME_PER_SECOND;
+		if (t < m_future.firstKey()/TIME_PER_SECOND)
 			return;
 
 		cblockq << "Past-future blocks ready.";

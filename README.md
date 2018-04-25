@@ -70,15 +70,16 @@ The following *libraries* are required to be installed in the system in their
 development variant:
 
 - leveldb
+- microhttpd
 
 They usually can be installed using system-specific package manager.
 Examples for some systems:
 
 Operating system | Installation command
 ---------------- | --------------------
-Debian-based     | `sudo apt-get install libleveldb-dev`
-RedHat-based     | `dnf install leveldb-devel`
-macOS            | `brew install leveldb`
+Debian-based     | `sudo apt-get install libleveldb-dev libmicrohttpd-dev`
+RedHat-based     | `dnf install leveldb-devel libmicrohttpd-devel`
+macOS            | `brew install leveldb libmicrohttpd`
 
 
 We also support a "one-button" shell script 
@@ -106,6 +107,7 @@ Configure the project build with the following command to create the
 mkdir build; cd build  # Create a build directory.
 cmake ..               # Configure the project.
 cmake --build .        # Build all default targets.
+cmake -DEVMJIT=Off -DTESTS=Off -DETHASHCL=Off -DMINIUPNPC=Off -DCMAKE_BUILD_TYPE=Debug ..   # Build debug targets.
 ```
 
 On **Windows** Visual Studio 2015 is required. You should generate Visual Studio 

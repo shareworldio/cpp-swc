@@ -33,6 +33,8 @@
 #include "EthereumPeer.h"
 #include "BlockChainSync.h"
 
+#include "BlockChainRequest.h"
+
 using namespace std;
 using namespace dev;
 using namespace dev::eth;
@@ -54,7 +56,7 @@ namespace
 class EthereumPeerObserver: public EthereumPeerObserverFace
 {
 public:
-	EthereumPeerObserver(shared_ptr<BlockChainSync> _sync, TransactionQueue& _tq): m_sync(_sync), m_tq(_tq) {}
+	EthereumPeerObserver(shared_ptr<BlockChainSyncInterface> _sync, TransactionQueue& _tq): m_sync(_sync), m_tq(_tq) {}
 
 	void onPeerStatus(std::shared_ptr<EthereumPeer> _peer) override
 	{
@@ -158,7 +160,7 @@ public:
 	}
 
 private:
-	shared_ptr<BlockChainSync> m_sync;
+	shared_ptr<BlockChainSyncInterface> m_sync;
 	TransactionQueue& m_tq;
 };
 
@@ -379,7 +381,12 @@ EthereumHost::EthereumHost(BlockChain const& _ch, OverlayDB const& _db, Transact
 {
 	// TODO: Composition would be better. Left like that to avoid initialization
 	//       issues as BlockChainSync accesses other EthereumHost members.
-	m_sync.reset(new BlockChainSync(*this));
+	if(m_chain.chainParams().u256Param("syncRequest") > u256(0)){
+		m_sync.reset(new BlockChainRequest(*this));
+		cdebug << "Start BlockChainRequest!";
+	}else{
+		m_sync.reset(new BlockChainSync(*this));
+	}
 	m_peerObserver = make_shared<EthereumPeerObserver>(m_sync, m_tq);
 	m_latestBlockSent = _ch.currentHash();
 	m_tq.onImport([this](ImportResult _ir, h256 const& _h, h512 const& _nodeId) { onTransactionImported(_ir, _h, _nodeId); });

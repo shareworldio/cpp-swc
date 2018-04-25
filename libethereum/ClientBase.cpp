@@ -369,6 +369,48 @@ LocalisedTransactionReceipt ClientBase::localisedTransactionReceipt(h256 const& 
 		toAddress(t.from(), t.nonce()));
 }
 
+Transactions ClientBase::ListTransactions(Address const& _from, u256 const& _nonce, unsigned const& _count) const
+{
+	Transactions transactions;
+
+	cdebug << "_from=" << _from << ",_nonce=" << _nonce << ",_count=" << _count;
+	for(unsigned i = 0; i < _count; i++){
+		cdebug << "_from=" << _from << ",_nonce + i=" << _nonce + i;
+		bytes t = bc().transaction(_from, _nonce + i);
+		if(t.empty())
+			return transactions;
+		
+		transactions.push_back(Transaction(t, CheckTransaction::None));
+	}
+
+	return transactions;
+}
+
+std::vector<LocalisedTransactionReceipt> ClientBase::ListTransactionReceipts(Address const& _from, u256 const& _nonce, unsigned const& _count) const
+{
+	std::vector<LocalisedTransactionReceipt> receipts;
+
+	try{
+		cdebug << "_from=" << _from << ",_nonce=" << _nonce << ",_count=" << _count;
+		for(unsigned i = 0; i < _count; i++){
+			cdebug << "_from=" << _from << ",_nonce + i=" << _nonce + i;
+
+			std::pair<h256, unsigned> tl = bc().transactionLocation(_from, _nonce + i);
+			Transaction t = Transaction(bc().transaction(tl.first, tl.second), CheckTransaction::Cheap);
+			TransactionReceipt tr = bc().transactionReceipt(tl.first, tl.second);
+			LocalisedTransactionReceipt receipt(tr, t.sha3(), tl.first, numberFromHash(tl.first), tl.second, tr.cumulativeGasUsed(), toAddress(t.from(), t.nonce()));
+			
+			receipts.push_back(receipt);
+		}
+	}catch(...){
+		cdebug << "_from=" << _from << ",_nonce=" << _nonce << ",_count=" << _count;
+		return receipts;
+	}
+
+	return receipts;
+}
+
+
 pair<h256, unsigned> ClientBase::transactionLocation(h256 const& _transactionHash) const
 {
 	return bc().transactionLocation(_transactionHash);

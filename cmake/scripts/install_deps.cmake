@@ -9,3 +9,4 @@ endfunction(download_and_install)
 
 
 download_and_install("leveldb-1.2")
+download_and_install("microhttpd-0.9.2")

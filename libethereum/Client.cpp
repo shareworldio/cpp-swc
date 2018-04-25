@@ -33,6 +33,9 @@
 #include <memory>
 #include <thread>
 
+#include <libethcore/ABI.h>
+#include <libethcore/CommonJS.h>
+
 using namespace std;
 using namespace dev;
 using namespace dev::eth;
@@ -395,16 +398,21 @@ double static const c_targetDuration = 1;
 void Client::syncBlockQueue()
 {
 //  cdebug << "syncBlockQueue()";
-
-    ImportRoute ir;
-    unsigned count;
-    Timer t;
-    tie(ir, m_syncBlockQueue, count) = bc().sync(m_bq, m_stateDB, m_syncAmount);
-    double elapsed = t.elapsed();
+	class Timer timer;
+	ImportRoute ir;
+	unsigned count;
+	Timer t;
+	bool syncBlockQueue;
+	tie(ir, syncBlockQueue, count) = bc().sync(m_bq, m_stateDB, m_syncAmount);
+	if(syncBlockQueue){
+		cdebug << "count=" << count;
+		m_syncBlockQueue.production();
+	}
+	double elapsed = t.elapsed();
 
     if (count)
     {
-        clog(ClientNote) << count << "blocks imported in" << unsigned(elapsed * 1000) << "ms (" << (count / elapsed) << "blocks/s) in #" << bc().number();
+        clog(ClientNote) << count << "blocks imported in" << unsigned(elapsed * 1000) << "ms (" << (count / elapsed) << "blocks/s) in #" << bc().number() << "timer.elapsed()=" << timer.elapsed();
     }
 
     if (elapsed > c_targetDuration * 1.1 && count > c_syncMin)
@@ -433,8 +441,15 @@ void Client::syncTransactionQueue()
             return;
         }
 
-        tie(newPendingReceipts, m_syncTransactionQueue) = m_working.sync(bc(), m_tq, *m_gp);
-    }
+		class Timer timer;
+		bool syncTransactionQueue;
+		tie(newPendingReceipts, syncTransactionQueue) = m_working.sync(bc(), m_tq, *m_gp);
+		if(syncTransactionQueue){
+			cdebug << "syncTransactionQueue=" << syncTransactionQueue;
+			m_syncTransactionQueue.production();
+		}
+		cdebug << "newPendingReceipts.size()=" << newPendingReceipts.size() << ",m_syncTransactionQueue=" << (bool)m_syncTransactionQueue << ",m_working.pending().size()=" << m_working.pending().size() << "timer.elapsed()=" << timer.elapsed();
+	}
 
     if (newPendingReceipts.empty())
     {
@@ -538,6 +553,18 @@ void Client::resyncStateFromChain()
     onTransactionQueueReady();
 }
 
+void Client::onTransactionQueueReady() 
+{ 
+	m_syncTransactionQueue.production(); 
+	m_signalled.notify_all(); 
+}
+
+void Client::onBlockQueueReady() 
+{ 
+	m_syncBlockQueue.production(); 
+	m_signalled.notify_all(); 
+}
+
 void Client::resetState()
 {
     Block newPreMine(chainParams().accountStartNonce);
@@ -553,20 +580,36 @@ void Client::resetState()
     onTransactionQueueReady();
 }
 
+void Client::onImprted(Address _contrant, std::function< void() > _f)
+{
+	DEV_RECURSIVE_GUARDED(x_onImprted)
+		m_onImprted[_contrant].push_back(_f);
+}
+
 void Client::onChainChanged(ImportRoute const& _ir)
 {
 //  ctrace << "onChainChanged()";
     h256Hash changeds;
     onDeadBlocks(_ir.deadBlocks, changeds);
-    for (auto const& t: _ir.goodTranactions)
-    {
-        clog(ClientTrace) << "Safely dropping transaction " << t.sha3();
-        m_tq.dropGood(t);
-    }
+    
     onNewBlocks(_ir.liveBlocks, changeds);
     if (!isMajorSyncing())
         resyncStateFromChain();
     noteChanged(changeds);
+
+	DEV_RECURSIVE_GUARDED(x_onImprted)
+	{
+		for (auto const& t: _ir.goodTranactions)
+	    {
+			if(m_onImprted.count(t.to())){
+				for(auto item : m_onImprted[t.to()])
+					item();
+			}
+
+			clog(ClientTrace) << "Safely dropping transaction " << t.sha3();
+	        m_tq.dropGood(t);
+	    }
+	}
 }
 
 bool Client::remoteActive() const
@@ -609,6 +652,7 @@ void Client::rejigSealing()
                 if (m_working.isSealed())
                 {
                     clog(ClientNote) << "Tried to seal sealed block...";
+					m_needStateReset = true;
                     return;
                 }
                 m_working.commitToSeal(bc(), m_extraData);
@@ -667,9 +711,8 @@ void Client::noteChanged(h256Hash const& _filters)
 
 void Client::doWork(bool _doWait)
 {
-    bool t = true;
-    if (m_syncBlockQueue.compare_exchange_strong(t, false))
-        syncBlockQueue();
+	if (m_syncBlockQueue.consumerAll())
+		syncBlockQueue();
 
     if (m_needStateReset)
     {
@@ -677,11 +720,10 @@ void Client::doWork(bool _doWait)
         m_needStateReset = false;
     }
 
-    t = true;
     bool isSealed = false;
     DEV_READ_GUARDED(x_working)
         isSealed = m_working.isSealed();
-    if (!isSealed && !isMajorSyncing() && !m_remoteWorking && m_syncTransactionQueue.compare_exchange_strong(t, false))
+    if (!isSealed && !isMajorSyncing() && !m_remoteWorking && m_syncTransactionQueue.consumerAll())
         syncTransactionQueue();
 
     tick();
@@ -835,21 +877,30 @@ void Client::rewind(unsigned _n)
 
 pair<h256, Address> Client::submitTransaction(TransactionSkeleton const& _t, Secret const& _secret)
 {
-    prepareForTransaction();
+	prepareForTransaction();
+	
+	TransactionSkeleton ts(_t);
+	ts.from = toAddress(_secret);
+	if (_t.nonce == Invalid256){
+		ts.nonce = max<u256>(postSeal().transactionsFrom(ts.from), m_tq.maxNonce(ts.from));
+		cdebug << "postSeal().transactionsFrom(ts.from)=" << postSeal().transactionsFrom(ts.from) << ",m_tq.maxNonce(ts.from)=" << m_tq.maxNonce(ts.from) << ",ts.nonce=" << ts.nonce;
+	}
+	if (ts.gasPrice == Invalid256)
+		ts.gasPrice = gasBidPrice();
+	if (ts.gas == Invalid256){
+		if(ts.gasPrice > u256(0)){
+			ts.gas = min<u256>(gasLimitRemaining() / 5, balanceAt(ts.from) / ts.gasPrice);
+		}else{
+			ts.gas = gasLimitRemaining();
+			cdebug << "ts.gas=" << ts.gas << ",ts.gasPrice=" << ts.gasPrice;
+		}
+	}
 
-    TransactionSkeleton ts(_t);
-    ts.from = toAddress(_secret);
-    if (_t.nonce == Invalid256)
-        ts.nonce = max<u256>(postSeal().transactionsFrom(ts.from), m_tq.maxNonce(ts.from));
-    if (ts.gasPrice == Invalid256)
-        ts.gasPrice = gasBidPrice();
-    if (ts.gas == Invalid256)
-        ts.gas = min<u256>(gasLimitRemaining() / 5, balanceAt(ts.from) / ts.gasPrice);
-
-    Transaction t(ts, _secret);
-    m_tq.import(t.rlp());
-
-    return make_pair(t.sha3(), toAddress(ts.from, ts.nonce));
+	cdebug << "ts.gas=" << ts.gas << ",ts.gasPrice=" << ts.gasPrice << ",ts.nonce=" << ts.nonce;
+	Transaction t(ts, _secret);
+	m_tq.import(t.rlp());
+	
+	return make_pair(t.sha3(), toAddress(ts.from, ts.nonce));
 }
 
 // TODO: remove try/catch, allow exceptions
@@ -868,9 +919,49 @@ ExecutionResult Client::call(Address const& _from, u256 _value, Address _dest, b
             temp.mutableState().addBalance(_from, (u256)(t.gas() * t.gasPrice() + t.value()));
         ret = temp.execute(bc().lastBlockHashes(), t, Permanence::Reverted);
     }
-    catch (...)
+    catch (Exception& ex)
     {
         // TODO: Some sort of notification of failure.
+        cdebug << "*************************************ex.what()=" << ex.what();
     }
     return ret;
 }
+
+bytes Client::call(Address _dest, bytes const& _data)
+{
+	return call(jsToAddress("0x007cce4866d8b9ef101da517c4592230d1b90e12"), u256(0), _dest, _data, Invalid256, Invalid256, LatestBlock, FudgeFactor::Lenient).output;
+}
+
+std::string Client::getNodes(string const& _node)
+{
+	bytes data;
+	if(_node == "")
+	{
+		data = dev::eth::ContractABI().abiIn("getAllNode()");
+	}
+	else
+	{
+		data = dev::eth::ContractABI().abiIn("getNode(string)", _node);
+	}
+
+	bytes result = call(jsToAddress(getNodeAddress()), data);
+	string out = eth::abiOut<std::string>(result);
+
+	return out;
+}
+
+std::string Client::getNodeAddress() const
+{
+	return "0x0000000000000000000000000000000000000009";
+}
+
+std::string Client::getOwner()
+{
+	bytes data = dev::eth::ContractABI().abiIn("owner()");
+	bytes result = call(jsToAddress(getNodeAddress()), data);
+	string out = toJS(eth::abiOut<Address>(result));
+
+	return out;
+}
+
+

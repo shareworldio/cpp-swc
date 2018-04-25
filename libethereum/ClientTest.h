@@ -55,8 +55,9 @@ public:
 	bool addBlock(std::string const& _rlp);
 	bool completeSync();
 
+	 bool wouldSeal() const override;
 protected:
-	unsigned m_blocksToMine;
+	unsigned m_blocksToMine = (unsigned)(-1);
 	virtual void onNewBlocks(h256s const& _blocks, h256Hash& io_changed) override;
 };
 

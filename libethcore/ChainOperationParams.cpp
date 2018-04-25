@@ -83,3 +83,16 @@ void ChainOperationParams::setBlockReward(u256 const& _newBlockReward)
 {
 	m_blockReward = _newBlockReward;
 }
+
+u256 ChainOperationParams::u256Param(std::string const& _name) const
+{
+	std::string at("");
+
+	auto it = otherParams.find(_name);
+	if (it != otherParams.end())
+		at = it->second;
+
+	return u256(fromBigEndian<u256>(fromHex(at)));
+}
+
+

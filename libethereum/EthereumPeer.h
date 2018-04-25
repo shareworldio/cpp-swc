@@ -84,6 +84,7 @@ class EthereumPeer: public p2p::Capability
 {
 	friend class EthereumHost; //TODO: remove this
 	friend class BlockChainSync; //TODO: remove this
+	friend class BlockChainRequest; //TODO: remove this
 
 public:
 	/// Basic constructor.

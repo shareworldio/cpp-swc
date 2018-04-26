@@ -106,8 +106,9 @@ Configure the project build with the following command to create the
 ```shell
 mkdir build; cd build  # Create a build directory.
 cmake ..               # Configure the project.
-cmake --build .        # Build all default targets.
+cmake -DSTATIC=ON ..        # Build static link.
 cmake -DEVMJIT=Off -DTESTS=Off -DETHASHCL=Off -DMINIUPNPC=Off -DCMAKE_BUILD_TYPE=Debug ..   # Build debug targets.
+cmake -DEVMJIT=Off -DTESTS=Off -DETHASHCL=Off -DMINIUPNPC=Off -DCMAKE_BUILD_TYPE=Debug -DSTATIC=ON ..   # Build static link.
 ```
 
 On **Windows** Visual Studio 2015 is required. You should generate Visual Studio 

@@ -118,3 +118,9 @@ if(COVERAGE)
 	set(CMAKE_SHARED_LINKER_FLAGS "--coverage ${CMAKE_SHARED_LINKER_FLAGS}")
 	set(CMAKE_EXE_LINKER_FLAGS "--coverage ${CMAKE_EXE_LINKER_FLAGS}")
 endif()
+
+if(STATIC)
+	add_compile_options(-static)
+	message("BUILD static.")
+endif()
+

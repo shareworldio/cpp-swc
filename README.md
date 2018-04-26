@@ -36,7 +36,7 @@ Windows          | [![AppVeyor](https://img.shields.io/appveyor/ci/ethereum/cpp-
 Git and GitHub are used to maintain the source code. Clone the repository by:
 
 ```shell
-git clone --recursive https://github.com/ethereum/cpp-ethereum.git
+git clone --recursive https://github.com/ancjf/cpp-ethereum.git
 cd cpp-ethereum
 ```
 

@@ -41,7 +41,7 @@ namespace dev {
 					this->bindAndAddMethod(jsonrpc::Procedure("eth_listTransactions", jsonrpc::PARAMS_BY_POSITION, jsonrpc::JSON_STRING, "param1",jsonrpc::JSON_STRING,"param2",jsonrpc::JSON_STRING,"param3",jsonrpc::JSON_STRING, NULL), &dev::rpc::EthFace::eth_listTransactionsI);
 					this->bindAndAddMethod(jsonrpc::Procedure("eth_listTransactionReceipts", jsonrpc::PARAMS_BY_POSITION, jsonrpc::JSON_STRING, "param1",jsonrpc::JSON_STRING,"param2",jsonrpc::JSON_STRING,"param3",jsonrpc::JSON_STRING, NULL), &dev::rpc::EthFace::eth_listTransactionReceiptsI);	
 					this->bindAndAddMethod(jsonrpc::Procedure("eth_getNodes", jsonrpc::PARAMS_BY_POSITION, jsonrpc::JSON_STRING, "param1",jsonrpc::JSON_STRING, NULL), &dev::rpc::EthFace::eth_getNodesI);
-					this->bindAndAddMethod(jsonrpc::Procedure("eth_getNodeAddress", jsonrpc::PARAMS_BY_POSITION, jsonrpc::JSON_STRING, NULL), &dev::rpc::EthFace::eth_getNodeAddressI);
+					this->bindAndAddMethod(jsonrpc::Procedure("eth_getNodeAbi", jsonrpc::PARAMS_BY_POSITION, jsonrpc::JSON_STRING, NULL), &dev::rpc::EthFace::eth_getNodeAbiI);
 					this->bindAndAddMethod(jsonrpc::Procedure("eth_getOwner", jsonrpc::PARAMS_BY_POSITION, jsonrpc::JSON_STRING, NULL), &dev::rpc::EthFace::eth_getOwnerI);
 	
                     this->bindAndAddMethod(jsonrpc::Procedure("eth_getTransactionByBlockHashAndIndex", jsonrpc::PARAMS_BY_POSITION, jsonrpc::JSON_OBJECT, "param1",jsonrpc::JSON_STRING,"param2",jsonrpc::JSON_STRING, NULL), &dev::rpc::EthFace::eth_getTransactionByBlockHashAndIndexI);
@@ -159,10 +159,10 @@ namespace dev {
                 {
                     response = this->eth_getNodes(request[0u].asString());
                 }
-				inline virtual void eth_getNodeAddressI(const Json::Value &request, Json::Value &response)
+				inline virtual void eth_getNodeAbiI(const Json::Value &request, Json::Value &response)
                 {
                 	(void)request;
-                    response = this->eth_getNodeAddress();
+                    response = this->eth_getNodeAbi();
                 }
 				inline virtual void eth_getOwnerI(const Json::Value &request, Json::Value &response)
                 {
@@ -332,7 +332,7 @@ namespace dev {
 				virtual Json::Value eth_listTransactions(std::string const& _from, std::string const& _nonce, std::string const& _count) = 0;
 				virtual Json::Value eth_listTransactionReceipts(std::string const& _from, std::string const& _nonce, std::string const& _count) = 0;
 				virtual std::string eth_getNodes(std::string const& _node) = 0;
-				virtual std::string eth_getNodeAddress() = 0;
+				virtual std::string eth_getNodeAbi() = 0;
 				virtual std::string eth_getOwner() = 0;
 	
                 virtual Json::Value eth_getBlockTransactionCountByNumber(const std::string& param1) = 0;

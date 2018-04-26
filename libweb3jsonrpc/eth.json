@@ -25,7 +25,7 @@
 { "name": "eth_listTransactions", "params": ["","",""], "order": [], "returns": {}},
 { "name": "eth_listTransactionReceipts", "params": ["","",""], "order": [], "returns": {}},
 { "name": "eth_getOwner", "params": [], "order": [], "returns": ""},
-{ "name": "eth_getNodeAddress", "params": [], "order": [], "returns": ""},
+{ "name": "eth_getNodeAbi", "params": [], "order": [], "returns": ""},
 { "name": "eth_getNodes", "params": [""], "order": [], "returns": ""},
 { "name": "eth_getTransactionByBlockHashAndIndex", "params": ["", ""], "order": [], "returns": {}},
 { "name": "eth_getTransactionByBlockNumberAndIndex", "params": ["", ""], "order": [], "returns": {}},

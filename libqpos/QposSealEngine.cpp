@@ -35,6 +35,7 @@
 #include "QposSealEngine.h"
 #include "Common.h"
 #include "Qpos.h"
+#include <libsolidity/Solidity.h>
 
 using namespace std;
 using namespace dev;
@@ -65,15 +66,13 @@ void QposSealEngine::initEnv(class Client *_c, p2p::Host *_host, BlockChain* _bc
 		m_exNodes.push_back(it);
 	}
 
-	const Address addr = jsToAddress(m_client->getNodeAddress());
+	const Address addr = jsToAddress(nodeAddress());
 	m_client->onImprted(addr, [&]()
 	{
 		DEV_RECURSIVE_GUARDED(x_nodes)
 			this->getMinerList(m_nodes);
 	});
 
-	DEV_RECURSIVE_GUARDED(x_nodes)
-		this->getMinerList(m_nodes);
 	
 	exnodesMe = m_client->chainParams().exnodesMe;
 	exnodesAnyone = m_client->chainParams().exnodesAnyone;

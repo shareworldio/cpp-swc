@@ -26,7 +26,7 @@ set_target_properties(solidity PROPERTIES INCLUDE_DIRECTORIES ${SOL_INCLUDES})
 target_include_directories(solidity PRIVATE ${SOLIDITY_INCLUDE_DIR}) 
 target_include_directories(solidity SYSTEM PUBLIC ${Boost_INCLUDE_DIR})
 
-file(GLOB SRC_LIST "solidity.cpp")
+file(GLOB SRC_LIST "*.cpp")
 file(GLOB HEADERS "*.h")
 
 add_library(contract ${SRC_LIST} ${HEADERS})

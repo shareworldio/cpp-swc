@@ -35,6 +35,7 @@
 
 #include <libethcore/ABI.h>
 #include <libethcore/CommonJS.h>
+#include <libsolidity/Solidity.h>
 
 using namespace std;
 using namespace dev;
@@ -944,21 +945,21 @@ std::string Client::getNodes(string const& _node)
 		data = dev::eth::ContractABI().abiIn("getNode(string)", _node);
 	}
 
-	bytes result = call(jsToAddress(getNodeAddress()), data);
+	bytes result = call(jsToAddress(nodeAddress()), data);
 	string out = eth::abiOut<std::string>(result);
 
 	return out;
 }
 
-std::string Client::getNodeAddress() const
+std::string Client::getNodeAbi() const
 {
-	return "0x0000000000000000000000000000000000000009";
+	return compileNodeAbi();
 }
 
 std::string Client::getOwner()
 {
 	bytes data = dev::eth::ContractABI().abiIn("owner()");
-	bytes result = call(jsToAddress(getNodeAddress()), data);
+	bytes result = call(jsToAddress(nodeAddress()), data);
 	string out = toJS(eth::abiOut<Address>(result));
 
 	return out;

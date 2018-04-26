@@ -216,7 +216,7 @@ public:
 	virtual bytes call(Address _dest, bytes const& _data) override;
 	void onImprted(Address _contrant, std::function< void() > _f);
 	virtual std::string getNodes(std::string const& _node) override;
-	virtual std::string getNodeAddress()        const override;   
+	virtual std::string getNodeAbi()        const override;   
 	virtual std::string getOwner()     override;
 protected:
     /// Perform critical setup functions.

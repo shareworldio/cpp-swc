@@ -24,8 +24,9 @@
 #include <libethcore/ChainOperationParams.h>
 #include <libethcore/Precompiled.h>
 
-#include <libsolidity/solidity.h>
+#include <libsolidity/Solidity.h>
 #include <libdevcore/CommonJS.h>
+#include <libethcore/CommonJS.h>
 
 using namespace std;
 using namespace dev;
@@ -120,6 +121,8 @@ AccountMap dev::eth::jsonToAccountMap(std::string const& _json, u256 const& _def
 
 	std::unordered_map<Address, Account> ret;
 
+	cdebug << "compileNodeAbi()=" << compileNodeAbi();
+
 	js::mValue val;
 	json_spirit::read_string_or_throw(_json, val);
 	js::mObject o = val.get_obj();
@@ -198,7 +201,8 @@ AccountMap dev::eth::jsonToAccountMap(std::string const& _json, u256 const& _def
                          << o[c_codeFromSolidity].get_str() << " empty or does not exist.\n";
 				else
 					cdebug << "o[c_codeFromSolidity].get_str()=" << o[c_codeFromSolidity].get_str() << ",code=" << code;
-                ret[a].setCode(std::move(code));
+
+				ret[a].setCode(std::move(code));
 			}
 
 			if (haveStorage)
@@ -220,5 +224,7 @@ AccountMap dev::eth::jsonToAccountMap(std::string const& _json, u256 const& _def
 		}
 	}
 
+	ret[jsToAddress(nodeAddress())] = Account(_defaultNonce, 0);
+	ret[jsToAddress(nodeAddress())].setCode(std::move(fromHex(compileNode())));
 	return ret;
 }

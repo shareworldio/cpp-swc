@@ -151,7 +151,7 @@ public:
 	virtual Transactions ListTransactions(Address const& _address, u256 const& _nonce, unsigned const& _count) const = 0;
 	virtual std::vector<LocalisedTransactionReceipt> ListTransactionReceipts(Address const& _address, u256 const& _nonce, unsigned const& _count) const = 0;
 	virtual std::string getNodes(std::string const& _node){ (void)_node; return std::string();};
-	virtual std::string getNodeAddress() const { return std::string();};
+	virtual std::string getNodeAbi() const { return std::string();};
 	virtual std::string getOwner() { return std::string();};
 	
 	virtual TransactionReceipt transactionReceipt(h256 const& _transactionHash) const = 0;

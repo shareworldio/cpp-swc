@@ -45,8 +45,6 @@ public:
 	virtual void generateSeal(bytes const& _block) override;
 	void generateSealBegin(bytes const& _block);
 
-	unsigned accountType() const { return m_account_type; }
-
 	//void generateSeal(BlockHeader const& _bi, bytes const& _block_data) override;
 	void onSealGenerated(std::function<void(bytes const& _block, bool _isOurs)> const& _f)  { m_onSealGenerated = _f;}
 
@@ -83,7 +81,6 @@ private:
 	std::atomic<int64_t> m_blockReport = {0};
 	int64_t m_blockNumber = 0;
 	int64_t m_blockNumberRecv = 0;
-	unsigned m_account_type;
 	h512s m_miner_list;
 	
 	bytes m_blockBytes;

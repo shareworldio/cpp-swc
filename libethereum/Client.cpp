@@ -899,7 +899,10 @@ pair<h256, Address> Client::submitTransaction(TransactionSkeleton const& _t, Sec
 
 	cdebug << "ts.gas=" << ts.gas << ",ts.gasPrice=" << ts.gasPrice << ",ts.nonce=" << ts.nonce;
 	Transaction t(ts, _secret);
-	m_tq.import(t.rlp());
+	if(ImportResult::Success == m_tq.import(t.rlp())){
+		if (auto h = m_host.lock())
+        	h->noteNewTransactions();
+	}
 	
 	return make_pair(t.sha3(), toAddress(ts.from, ts.nonce));
 }

@@ -24,9 +24,6 @@ using namespace ba::ip;
 
 void Qpos::tick()
 {
-	if(m_account_type != EN_ACCOUNT_TYPE_MINER)
-		return;
-
 	voteTick();
 	if(!m_isLeader)
 		return;
@@ -50,16 +47,11 @@ void Qpos::tick()
 
 bool Qpos::interpret(QposPeer* _p, unsigned _id, RLP const& _r)
 {
-	if(m_account_type != EN_ACCOUNT_TYPE_MINER){
-		cdebug << "_id= " << _id << ",m_account_type=" << m_account_type << ",_p->id()=" << _p->id();
-		return true;
-	}
-
 	unsigned msgType;
 	try{
 		msgType = _r[0][0].toInt();
 	}catch(...){
-		cdebug << "msgType err _id= " << _id << ",m_account_type=" << m_account_type << ",_p->id()=" << _p->id();
+		cdebug << "msgType err _id= " << _id << ",_p->id()=" << _p->id();
 		return true;
 	}
 
@@ -123,9 +115,10 @@ void Qpos::reportBlockSelf()
 
 	auto ourIt = find(m_miner_list.begin(), m_miner_list.end(), id());
 	bool contain = (ourIt != m_miner_list.end());
-	m_account_type = contain ? EN_ACCOUNT_TYPE_MINER : EN_ACCOUNT_TYPE_NORMAL;
 	if(m_miner_list.size() == 1 && contain)
 		m_isLeader = true;
+	if(!contain && m_isLeader)
+		m_isLeader = false;
 
 	resetConfig();
 }
@@ -141,7 +134,7 @@ void Qpos::resetConfig()
 	m_consensusState = qposInitial;
 
 	cdebug << "m_consensusState=" << m_consensusState << ",nodeCount()=" << nodeCount();
-	cdebug << "m_account_type=" << m_account_type << ",id()=" << id() << ",m_currentView=" << (unsigned)m_currentView << ",m_miner_list.size()=" << m_miner_list.size() << ",m_isLeader=" << m_isLeader;
+	cdebug << ",id()=" << id() << ",m_currentView=" << (unsigned)m_currentView << ",m_miner_list.size()=" << m_miner_list.size() << ",m_isLeader=" << m_isLeader;
 }
 
 void Qpos::signalHandler(const boost::system::error_code& err, int signal)
@@ -473,9 +466,6 @@ void Qpos::generateSealBegin(bytes const& _block)
 
 void Qpos::generateSeal(bytes const& _block)
 {
-	if(m_account_type != EN_ACCOUNT_TYPE_MINER || !m_isLeader)
-		return;
-
 	m_onSealGenerated(_block, false);
 	return;
 	

@@ -910,7 +910,7 @@ int main(int argc, char** argv)
 
     if (!chainConfigIsSet)
         // default to mainnet if not already set with any of `--mainnet`, `--ropsten`, `--genesis`, `--config`
-        chainParams = ChainParams(genesisInfo(eth::Network::MainNetwork), genesisStateRoot(eth::Network::MainNetwork));
+        chainParams = ChainParams(genesisInfo(eth::Network::Quark), genesisStateRoot(eth::Network::Quark));
 
     if (g_logVerbosity > 0)
         cout << EthGrayBold "cpp-ethereum, a C++ Ethereum client" EthReset << "\n";

@@ -56,6 +56,7 @@ enum class Network
 	HomesteadToEIP150At5 = 102,
 	EIP158ToByzantiumAt5 = 103,
 
+	Quark = 0xfe,
 	Special = 0xff			///< Something else.
 };
 

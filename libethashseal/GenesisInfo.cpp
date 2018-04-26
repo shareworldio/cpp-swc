@@ -20,6 +20,7 @@
 using namespace dev;
 
 //Client configurations
+#include "genesis/quark.cpp"
 #include "genesis/mainNetwork.cpp"
 #include "genesis/ropsten.cpp"
 
@@ -50,6 +51,7 @@ std::string const& dev::eth::genesisInfo(Network _n)
 	switch (_n)
 	{
 	//Client genesis
+	case Network::Quark: return c_genesisInfoQuark;
 	case Network::MainNetwork: return c_genesisInfoMainNetwork;
 	case Network::Ropsten: return c_genesisInfoRopsten;
 
@@ -83,6 +85,7 @@ h256 const& dev::eth::genesisStateRoot(Network _n)
 	switch (_n)
 	{
 	case Network::MainNetwork: return c_genesisStateRootMainNetwork;
+	case Network::Quark:
 	case Network::Ropsten:
 	case Network::MainNetworkTest:
 	case Network::TransitionnetTest:

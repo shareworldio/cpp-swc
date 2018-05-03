@@ -752,8 +752,8 @@ void Client::tick()
         checkWatchGarbage();
         m_bq.tick();
         m_lastTick = chrono::system_clock::now();
-        if (m_report.ticks == 15)
-            clog(ClientTrace) << activityReport();
+        //if (m_report.ticks == 15)
+            //clog(ClientTrace) << activityReport();
     }
 }
 
@@ -926,7 +926,7 @@ ExecutionResult Client::call(Address const& _from, u256 _value, Address _dest, b
     catch (Exception& ex)
     {
         // TODO: Some sort of notification of failure.
-        cdebug << "*************************************ex.what()=" << ex.what();
+        cdebug << "ex.what()=" << ex.what();
     }
     return ret;
 }
@@ -951,6 +951,7 @@ std::string Client::getNodes(string const& _node)
 	bytes result = call(jsToAddress(nodeAddress()), data);
 	string out = eth::abiOut<std::string>(result);
 
+	cdebug << "data=" << data << ",out=" << out;
 	return out;
 }
 

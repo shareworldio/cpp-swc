@@ -376,7 +376,7 @@ void Qpos::voteTick()
 		multicast(m_miner_list, msg);
 	}
 
-	cdebug << "m_currentView=" << m_currentView << ",m_isLeader=" << m_isLeader << ",now=" << now;
+	//cdebug << "m_currentView=" << m_currentView << ",m_isLeader=" << m_isLeader << ",now=" << now;
 }
 
 void Qpos::onHeart(QposPeer* _p, RLP const& _r)

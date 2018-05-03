@@ -414,6 +414,7 @@ bool Executive::go(OnOpFunc const& _onOp)
 #if ETH_TIMED_EXECUTIONS
         Timer t;
 #endif
+		u256 sgas = m_gas;
         try
         {
             // Create VM instance. Force Interpreter if tracing requested.
@@ -489,9 +490,11 @@ bool Executive::go(OnOpFunc const& _onOp)
             // has drawbacks. Essentially, the amount of ram has to be increased here.
         }
 
-        if (m_res && m_output)
+        if (m_res && m_output){
             // Copy full output:
             m_res->output = m_output.toVector();
+			cdebug << "sgas=" << sgas << ",gas used:=" << sgas - m_gas << ",m_res->output=" << m_res->output;
+        }
 
 #if ETH_TIMED_EXECUTIONS
         cnote << "VM took:" << t.elapsed() << "; gas used: " << (sgas - m_endGas);

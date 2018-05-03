@@ -62,6 +62,13 @@ enum QposAccountType {
 	EN_ACCOUNT_TYPE_MINER = 1
 };
 
+class QposNode
+{
+public:
+	NodeID m_id;
+	map<string, string> m_property;
+};
+
 class QposSealEngine: public eth::SealEngineBase//, Worker
 {
 public:

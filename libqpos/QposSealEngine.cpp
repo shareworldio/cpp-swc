@@ -72,7 +72,6 @@ void QposSealEngine::initEnv(class Client *_c, p2p::Host *_host, BlockChain* _bc
 		DEV_RECURSIVE_GUARDED(x_nodes)
 			this->getMinerList(m_nodes);
 	});
-
 	
 	exnodesMe = m_client->chainParams().exnodesMe;
 	exnodesAnyone = m_client->chainParams().exnodesAnyone;
@@ -88,7 +87,6 @@ void QposSealEngine::init()
 void QposSealEngine::populateFromParent(BlockHeader& _bi, BlockHeader const& _parent) const
 {
 	SealEngineFace::populateFromParent(_bi, _parent);
-
 	
 	cdebug << "_parent.gasLimit()=" << _parent.gasLimit();
 	_bi.setGasLimit(_parent.gasLimit());
@@ -168,48 +166,58 @@ void QposSealEngine::workLoop()
 bool QposSealEngine::getMinerList(set<NodeID> &_nodes, int _blk_no) const 
 {
 	(void)_blk_no;
-	
-	string out = m_client->getNodes("");
-	if(out == "[]" || out == ""){
-		_nodes.insert(id());
-	}else{
-		js::mValue val;
-		json_spirit::read_string_or_throw(out, val);
-		js::mArray array = val.get_array();
-		
-		for (size_t i = 0; i < array.size(); ++i)
-		{  
-			js::mValue v = array[i];
-			js::mObject o = v.get_obj();
-			auto it = o.find("id");
-			auto& codeObj = it->second;
 
-            if (codeObj.type() != json_spirit::str_type)
-            {
-            	continue;
-            }
+	try{
+		string out = m_client->getNodes("");
+		if(out == "[]" || out == ""){
+			_nodes.insert(id());
+		}else{
+			js::mValue val;
+			json_spirit::read_string_or_throw(out, val);
+			js::mArray array = val.get_array();
 
-			auto& id = codeObj.get_str();
-			cdebug << "i=" << i << ",id=" << id;
-			_nodes.insert(NodeID(id));
+			for (size_t i = 0; i < array.size(); ++i)
+			{
+				cdebug << "out=" << out << ",i=" << i;
+				try{
+					js::mValue v = array[i];
+					js::mObject o = v.get_obj();
+					auto it = o.find("id");
+					auto& codeObj = it->second;
+
+		            if (codeObj.type() != json_spirit::str_type)
+		            {
+		            	continue;
+		            }
+
+					auto& id = codeObj.get_str();
+					cdebug << "i=" << i << ",id=" << id;
+					_nodes.insert(NodeID(id));
+				}catch(...){
+					cdebug << "parse json err i=" << i;
+				}
+			}
 		}
-	}
 
-	for(auto it : m_exNodes){
-		_nodes.insert(it.id());
-	}
-	if(exnodesMe)
-		_nodes.insert(id());
-	if(exnodesAnyone){
-		_nodes.insert(id());
-
-		for (auto it : m_host->getPeers()){
-			_nodes.insert(it.id);
+		for(auto it : m_exNodes){
+			_nodes.insert(it.id());
 		}
-		
+		if(exnodesMe)
+			_nodes.insert(id());
+		if(exnodesAnyone){
+			_nodes.insert(id());
+
+			for (auto it : m_host->getPeers()){
+				_nodes.insert(it.id);
+			}
+			
+		}
+
+		cdebug << "out=" << out << ",id()=" << id() << ",_nodes=" << _nodes;
+	}catch(...){
+		cdebug << "parse json err";
 	}
 		
-	cdebug << "out=" << out << ",id()=" << id() << ",_nodes=" << _nodes;
 	return true;
 }
 

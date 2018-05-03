@@ -4,736 +4,215 @@ std::string const c_node_code =
 R"E(
 pragma solidity ^0.4.14;
 
-library strings {
-    struct slice {
-        uint _len;
-        uint _ptr;
-    }
-
-    function memcpy(uint dest, uint src, uint len) private pure {
-        // Copy word-length chunks while possible
-        for(; len >= 32; len -= 32) {
-            assembly {
-                mstore(dest, mload(src))
-            }
-            dest += 32;
-            src += 32;
-        }
-
-        // Copy remaining bytes
-        uint mask = 256 ** (32 - len) - 1;
-        assembly {
-            let srcpart := and(mload(src), not(mask))
-            let destpart := and(mload(dest), mask)
-            mstore(dest, or(destpart, srcpart))
-        }
-    }
-
-    /*
-     * @dev Returns a slice containing the entire string.
-     * @param self The string to make a slice from.
-     * @return A newly allocated slice containing the entire string.
-     */
-    function toSlice(string self) internal pure returns (slice) {
-        uint ptr;
-        assembly {
-            ptr := add(self, 0x20)
-        }
-        return slice(bytes(self).length, ptr);
-    }
-
-    /*
-     * @dev Returns the length of a null-terminated bytes32 string.
-     * @param self The value to find the length of.
-     * @return The length of the string, from 0 to 32.
-     */
-    function len(bytes32 self) internal pure returns (uint) {
-        uint ret;
-        if (self == 0)
-            return 0;
-        if (self & 0xffffffffffffffffffffffffffffffff == 0) {
-            ret += 16;
-            self = bytes32(uint(self) / 0x100000000000000000000000000000000);
-        }
-        if (self & 0xffffffffffffffff == 0) {
-            ret += 8;
-            self = bytes32(uint(self) / 0x10000000000000000);
-        }
-        if (self & 0xffffffff == 0) {
-            ret += 4;
-            self = bytes32(uint(self) / 0x100000000);
-        }
-        if (self & 0xffff == 0) {
-            ret += 2;
-            self = bytes32(uint(self) / 0x10000);
-        }
-        if (self & 0xff == 0) {
-            ret += 1;
-        }
-        return 32 - ret;
-    }
-
-    /*
-     * @dev Returns a slice containing the entire bytes32, interpreted as a
-     *      null-termintaed utf-8 string.
-     * @param self The bytes32 value to convert to a slice.
-     * @return A new slice containing the value of the input argument up to the
-     *         first null.
-     */
-    function toSliceB32(bytes32 self) internal pure returns (slice ret) {
-        // Allocate space for `self` in memory, copy it there, and point ret at it
-        assembly {
-            let ptr := mload(0x40)
-            mstore(0x40, add(ptr, 0x20))
-            mstore(ptr, self)
-            mstore(add(ret, 0x20), ptr)
-        }
-        ret._len = len(self);
-    }
-
-    /*
-     * @dev Returns a new slice containing the same data as the current slice.
-     * @param self The slice to copy.
-     * @return A new slice containing the same data as `self`.
-     */
-    function copy(slice self) internal pure returns (slice) {
-        return slice(self._len, self._ptr);
-    }
-
-    /*
-     * @dev Copies a slice to a new string.
-     * @param self The slice to copy.
-     * @return A newly allocated string containing the slice's text.
-     */
-    function toString(slice self) internal pure returns (string) {
-        string memory ret = new string(self._len);
-        uint retptr;
-        assembly { retptr := add(ret, 32) }
-
-        memcpy(retptr, self._ptr, self._len);
-        return ret;
-    }
-
-    /*
-     * @dev Returns the length in runes of the slice. Note that this operation
-     *      takes time proportional to the length of the slice; avoid using it
-     *      in loops, and call `slice.empty()` if you only need to know whether
-     *      the slice is empty or not.
-     * @param self The slice to operate on.
-     * @return The length of the slice in runes.
-     */
-    function len(slice self) internal pure returns (uint l) {
-        // Starting at ptr-31 means the LSB will be the byte we care about
-        uint ptr = self._ptr - 31;
-        uint end = ptr + self._len;
-        for (l = 0; ptr < end; l++) {
-            uint8 b;
-            assembly { b := and(mload(ptr), 0xFF) }
-            if (b < 0x80) {
-                ptr += 1;
-            } else if(b < 0xE0) {
-                ptr += 2;
-            } else if(b < 0xF0) {
-                ptr += 3;
-            } else if(b < 0xF8) {
-                ptr += 4;
-            } else if(b < 0xFC) {
-                ptr += 5;
-            } else {
-                ptr += 6;
-            }
-        }
-    }
-
-    /*
-     * @dev Returns true if the slice is empty (has a length of 0).
-     * @param self The slice to operate on.
-     * @return True if the slice is empty, False otherwise.
-     */
-    function empty(slice self) internal pure returns (bool) {
-        return self._len == 0;
-    }
-
-    /*
-     * @dev Returns a positive number if `other` comes lexicographically after
-     *      `self`, a negative number if it comes before, or zero if the
-     *      contents of the two slices are equal. Comparison is done per-rune,
-     *      on unicode codepoints.
-     * @param self The first slice to compare.
-     * @param other The second slice to compare.
-     * @return The result of the comparison.
-     */
-    function compare(slice self, slice other) internal pure returns (int) {
-        uint shortest = self._len;
-        if (other._len < self._len)
-            shortest = other._len;
-
-        uint selfptr = self._ptr;
-        uint otherptr = other._ptr;
-        for (uint idx = 0; idx < shortest; idx += 32) {
-            uint a;
-            uint b;
-            assembly {
-                a := mload(selfptr)
-                b := mload(otherptr)
-            }
-            if (a != b) {
-                // Mask out irrelevant bytes and check again
-                uint256 mask = ~(2 ** (8 * (32 - shortest + idx)) - 1);
-                uint256 diff = (a & mask) - (b & mask);
-                if (diff != 0)
-                    return int(diff);
-            }
-            selfptr += 32;
-            otherptr += 32;
-        }
-        return int(self._len) - int(other._len);
-    }
-
-    /*
-     * @dev Returns true if the two slices contain the same text.
-     * @param self The first slice to compare.
-     * @param self The second slice to compare.
-     * @return True if the slices are equal, false otherwise.
-     */
-    function equals(slice self, slice other) internal pure returns (bool) {
-        return compare(self, other) == 0;
-    }
-
-    /*
-     * @dev Extracts the first rune in the slice into `rune`, advancing the
-     *      slice to point to the next rune and returning `self`.
-     * @param self The slice to operate on.
-     * @param rune The slice that will contain the first rune.
-     * @return `rune`.
-     */
-    function nextRune(slice self, slice rune) internal pure returns (slice) {
-        rune._ptr = self._ptr;
-
-        if (self._len == 0) {
-            rune._len = 0;
-            return rune;
-        }
-
-        uint l;
-        uint b;
-        // Load the first byte of the rune into the LSBs of b
-        assembly { b := and(mload(sub(mload(add(self, 32)), 31)), 0xFF) }
-        if (b < 0x80) {
-            l = 1;
-        } else if(b < 0xE0) {
-            l = 2;
-        } else if(b < 0xF0) {
-            l = 3;
-        } else {
-            l = 4;
-        }
-
-        // Check for truncated codepoints
-        if (l > self._len) {
-            rune._len = self._len;
-            self._ptr += self._len;
-            self._len = 0;
-            return rune;
-        }
-
-        self._ptr += l;
-        self._len -= l;
-        rune._len = l;
-        return rune;
-    }
-
-    /*
-     * @dev Returns the first rune in the slice, advancing the slice to point
-     *      to the next rune.
-     * @param self The slice to operate on.
-     * @return A slice containing only the first rune from `self`.
-     */
-    function nextRune(slice self) internal pure returns (slice ret) {
-        nextRune(self, ret);
-    }
-
-    /*
-     * @dev Returns the number of the first codepoint in the slice.
-     * @param self The slice to operate on.
-     * @return The number of the first codepoint in the slice.
-     */
-    function ord(slice self) internal pure returns (uint ret) {
-        if (self._len == 0) {
-            return 0;
-        }
-
-        uint word;
-        uint length;
-        uint divisor = 2 ** 248;
-
-        // Load the rune into the MSBs of b
-        assembly { word:= mload(mload(add(self, 32))) }
-        uint b = word / divisor;
-        if (b < 0x80) {
-            ret = b;
-            length = 1;
-        } else if(b < 0xE0) {
-            ret = b & 0x1F;
-            length = 2;
-        } else if(b < 0xF0) {
-            ret = b & 0x0F;
-            length = 3;
-        } else {
-            ret = b & 0x07;
-            length = 4;
-        }
-
-        // Check for truncated codepoints
-        if (length > self._len) {
-            return 0;
-        }
-
-        for (uint i = 1; i < length; i++) {
-            divisor = divisor / 256;
-            b = (word / divisor) & 0xFF;
-            if (b & 0xC0 != 0x80) {
-                // Invalid UTF-8 sequence
-                return 0;
-            }
-            ret = (ret * 64) | (b & 0x3F);
-        }
-
-        return ret;
-    }
-
-    /*
-     * @dev Returns the keccak-256 hash of the slice.
-     * @param self The slice to hash.
-     * @return The hash of the slice.
-     */
-    function keccak(slice self) internal pure returns (bytes32 ret) {
-        assembly {
-            ret := keccak256(mload(add(self, 32)), mload(self))
-        }
-    }
-
-    /*
-     * @dev Returns true if `self` starts with `needle`.
-     * @param self The slice to operate on.
-     * @param needle The slice to search for.
-     * @return True if the slice starts with the provided text, false otherwise.
-     */
-    function startsWith(slice self, slice needle) internal pure returns (bool) {
-        if (self._len < needle._len) {
-            return false;
-        }
-
-        if (self._ptr == needle._ptr) {
-            return true;
-        }
-
-        bool equal;
-        assembly {
-            let length := mload(needle)
-            let selfptr := mload(add(self, 0x20))
-            let needleptr := mload(add(needle, 0x20))
-            equal := eq(keccak256(selfptr, length), keccak256(needleptr, length))
-        }
-        return equal;
-    }
-
-    /*
-     * @dev If `self` starts with `needle`, `needle` is removed from the
-     *      beginning of `self`. Otherwise, `self` is unmodified.
-     * @param self The slice to operate on.
-     * @param needle The slice to search for.
-     * @return `self`
-     */
-    function beyond(slice self, slice needle) internal pure returns (slice) {
-        if (self._len < needle._len) {
-            return self;
-        }
-
-        bool equal = true;
-        if (self._ptr != needle._ptr) {
-            assembly {
-                let length := mload(needle)
-                let selfptr := mload(add(self, 0x20))
-                let needleptr := mload(add(needle, 0x20))
-                equal := eq(sha3(selfptr, length), sha3(needleptr, length))
-            }
-        }
-
-        if (equal) {
-            self._len -= needle._len;
-            self._ptr += needle._len;
-        }
-
-        return self;
-    }
-
-    /*
-     * @dev Returns true if the slice ends with `needle`.
-     * @param self The slice to operate on.
-     * @param needle The slice to search for.
-     * @return True if the slice starts with the provided text, false otherwise.
-     */
-    function endsWith(slice self, slice needle) internal pure returns (bool) {
-        if (self._len < needle._len) {
-            return false;
-        }
-
-        uint selfptr = self._ptr + self._len - needle._len;
-
-        if (selfptr == needle._ptr) {
-            return true;
-        }
-
-        bool equal;
-        assembly {
-            let length := mload(needle)
-            let needleptr := mload(add(needle, 0x20))
-            equal := eq(keccak256(selfptr, length), keccak256(needleptr, length))
-        }
-
-        return equal;
-    }
-
-    /*
-     * @dev If `self` ends with `needle`, `needle` is removed from the
-     *      end of `self`. Otherwise, `self` is unmodified.
-     * @param self The slice to operate on.
-     * @param needle The slice to search for.
-     * @return `self`
-     */
-    function until(slice self, slice needle) internal pure returns (slice) {
-        if (self._len < needle._len) {
-            return self;
-        }
-
-        uint selfptr = self._ptr + self._len - needle._len;
-        bool equal = true;
-        if (selfptr != needle._ptr) {
-            assembly {
-                let length := mload(needle)
-                let needleptr := mload(add(needle, 0x20))
-                equal := eq(keccak256(selfptr, length), keccak256(needleptr, length))
-            }
-        }
-
-        if (equal) {
-            self._len -= needle._len;
-        }
-
-        return self;
-    }
-
-    event log_bytemask(bytes32 mask);
-
-    // Returns the memory address of the first byte of the first occurrence of
-    // `needle` in `self`, or the first byte after `self` if not found.
-    function findPtr(uint selflen, uint selfptr, uint needlelen, uint needleptr) private pure returns (uint) {
-        uint ptr = selfptr;
-        uint idx;
-
-        if (needlelen <= selflen) {
-            if (needlelen <= 32) {
-                bytes32 mask = bytes32(~(2 ** (8 * (32 - needlelen)) - 1));
-
-                bytes32 needledata;
-                assembly { needledata := and(mload(needleptr), mask) }
-
-                uint end = selfptr + selflen - needlelen;
-                bytes32 ptrdata;
-                assembly { ptrdata := and(mload(ptr), mask) }
-
-                while (ptrdata != needledata) {
-                    if (ptr >= end) 
-                        return selfptr + selflen;
-                    ptr++;
-                    assembly { ptrdata := and(mload(ptr), mask) }
-                }
-                return ptr;
-            } else {
-                // For long needles, use hashing
-                bytes32 hash;
-                assembly { hash := sha3(needleptr, needlelen) }
-
-                for (idx = 0; idx <= selflen - needlelen; idx++) {
-                    bytes32 testHash;
-                    assembly { testHash := sha3(ptr, needlelen) }
-                    if (hash == testHash)
-                        return ptr;
-                    ptr += 1;
-                }
-            }
-        }
-        return selfptr + selflen;
-    }
-
-    // Returns the memory address of the first byte after the last occurrence of
-    // `needle` in `self`, or the address of `self` if not found.
-    function rfindPtr(uint selflen, uint selfptr, uint needlelen, uint needleptr) private pure returns (uint) {
-        uint ptr;
-
-        if (needlelen <= selflen) {
-            if (needlelen <= 32) {
-                bytes32 mask = bytes32(~(2 ** (8 * (32 - needlelen)) - 1));
-
-                bytes32 needledata;
-                assembly { needledata := and(mload(needleptr), mask) }
-
-                ptr = selfptr + selflen - needlelen;
-                bytes32 ptrdata;
-                assembly { ptrdata := and(mload(ptr), mask) }
-
-                while (ptrdata != needledata) {
-                    if (ptr <= selfptr) 
-                        return selfptr;
-                    ptr--;
-                    assembly { ptrdata := and(mload(ptr), mask) }
-                }
-                return ptr + needlelen;
-            } else {
-                // For long needles, use hashing
-                bytes32 hash;
-                assembly { hash := sha3(needleptr, needlelen) }
-                ptr = selfptr + (selflen - needlelen);
-                while (ptr >= selfptr) {
-                    bytes32 testHash;
-                    assembly { testHash := sha3(ptr, needlelen) }
-                    if (hash == testHash)
-                        return ptr + needlelen;
-                    ptr -= 1;
-                }
-            }
-        }
-        return selfptr;
-    }
-
-    /*
-     * @dev Modifies `self` to contain everything from the first occurrence of
-     *      `needle` to the end of the slice. `self` is set to the empty slice
-     *      if `needle` is not found.
-     * @param self The slice to search and modify.
-     * @param needle The text to search for.
-     * @return `self`.
-     */
-    function find(slice self, slice needle) internal pure returns (slice) {
-        uint ptr = findPtr(self._len, self._ptr, needle._len, needle._ptr);
-        self._len -= ptr - self._ptr;
-        self._ptr = ptr;
-        return self;
-    }
-
-    /*
-     * @dev Modifies `self` to contain the part of the string from the start of
-     *      `self` to the end of the first occurrence of `needle`. If `needle`
-     *      is not found, `self` is set to the empty slice.
-     * @param self The slice to search and modify.
-     * @param needle The text to search for.
-     * @return `self`.
-     */
-    function rfind(slice self, slice needle) internal pure returns (slice) {
-        uint ptr = rfindPtr(self._len, self._ptr, needle._len, needle._ptr);
-        self._len = ptr - self._ptr;
-        return self;
-    }
-
-    /*
-     * @dev Splits the slice, setting `self` to everything after the first
-     *      occurrence of `needle`, and `token` to everything before it. If
-     *      `needle` does not occur in `self`, `self` is set to the empty slice,
-     *      and `token` is set to the entirety of `self`.
-     * @param self The slice to split.
-     * @param needle The text to search for in `self`.
-     * @param token An output parameter to which the first token is written.
-     * @return `token`.
-     */
-    function split(slice self, slice needle, slice token) internal pure returns (slice) {
-        uint ptr = findPtr(self._len, self._ptr, needle._len, needle._ptr);
-        token._ptr = self._ptr;
-        token._len = ptr - self._ptr;
-        if (ptr == self._ptr + self._len) {
-            // Not found
-            self._len = 0;
-        } else {
-            self._len -= token._len + needle._len;
-            self._ptr = ptr + needle._len;
-        }
-        return token;
-    }
-
-    /*
-     * @dev Splits the slice, setting `self` to everything after the first
-     *      occurrence of `needle`, and returning everything before it. If
-     *      `needle` does not occur in `self`, `self` is set to the empty slice,
-     *      and the entirety of `self` is returned.
-     * @param self The slice to split.
-     * @param needle The text to search for in `self`.
-     * @return The part of `self` up to the first occurrence of `delim`.
-     */
-    function split(slice self, slice needle) internal pure returns (slice token) {
-        split(self, needle, token);
-    }
-
-    /*
-     * @dev Splits the slice, setting `self` to everything before the last
-     *      occurrence of `needle`, and `token` to everything after it. If
-     *      `needle` does not occur in `self`, `self` is set to the empty slice,
-     *      and `token` is set to the entirety of `self`.
-     * @param self The slice to split.
-     * @param needle The text to search for in `self`.
-     * @param token An output parameter to which the first token is written.
-     * @return `token`.
-     */
-    function rsplit(slice self, slice needle, slice token) internal pure returns (slice) {
-        uint ptr = rfindPtr(self._len, self._ptr, needle._len, needle._ptr);
-        token._ptr = ptr;
-        token._len = self._len - (ptr - self._ptr);
-        if (ptr == self._ptr) {
-            // Not found
-            self._len = 0;
-        } else {
-            self._len -= token._len + needle._len;
-        }
-        return token;
-    }
-
-    /*
-     * @dev Splits the slice, setting `self` to everything before the last
-     *      occurrence of `needle`, and returning everything after it. If
-     *      `needle` does not occur in `self`, `self` is set to the empty slice,
-     *      and the entirety of `self` is returned.
-     * @param self The slice to split.
-     * @param needle The text to search for in `self`.
-     * @return The part of `self` after the last occurrence of `delim`.
-     */
-    function rsplit(slice self, slice needle) internal pure returns (slice token) {
-        rsplit(self, needle, token);
-    }
-
-    /*
-     * @dev Counts the number of nonoverlapping occurrences of `needle` in `self`.
-     * @param self The slice to search.
-     * @param needle The text to search for in `self`.
-     * @return The number of occurrences of `needle` found in `self`.
-     */
-    function count(slice self, slice needle) internal pure returns (uint cnt) {
-        uint ptr = findPtr(self._len, self._ptr, needle._len, needle._ptr) + needle._len;
-        while (ptr <= self._ptr + self._len) {
-            cnt++;
-            ptr = findPtr(self._len - (ptr - self._ptr), ptr, needle._len, needle._ptr) + needle._len;
-        }
-    }
-
-    /*
-     * @dev Returns True if `self` contains `needle`.
-     * @param self The slice to search.
-     * @param needle The text to search for in `self`.
-     * @return True if `needle` is found in `self`, false otherwise.
-     */
-    function contains(slice self, slice needle) internal pure returns (bool) {
-        return rfindPtr(self._len, self._ptr, needle._len, needle._ptr) != self._ptr;
-    }
-
-    /*
-     * @dev Returns a newly allocated string containing the concatenation of
-     *      `self` and `other`.
-     * @param self The first slice to concatenate.
-     * @param other The second slice to concatenate.
-     * @return The concatenation of the two strings.
-     */
-    function concat(slice self, slice other) internal pure returns (string) {
-        string memory ret = new string(self._len + other._len);
-        uint retptr;
-        assembly { retptr := add(ret, 32) }
-        memcpy(retptr, self._ptr, self._len);
-        memcpy(retptr + self._len, other._ptr, other._len);
-        return ret;
-    }
-
-    /*
-     * @dev Joins an array of slices, using `self` as a delimiter, returning a
-     *      newly allocated string.
-     * @param self The delimiter to use.
-     * @param parts A list of slices to join.
-     * @return A newly allocated string containing all the slices in `parts`,
-     *         joined with `self`.
-     */
-    function join(slice self, slice[] parts) internal pure returns (string) {
-        if (parts.length == 0)
-            return "";
-
-        uint length = self._len * (parts.length - 1);
-        for(uint i = 0; i < parts.length; i++)
-            length += parts[i]._len;
-
-        string memory ret = new string(length);
-        uint retptr;
-        assembly { retptr := add(ret, 32) }
-
-        for(i = 0; i < parts.length; i++) {
-            memcpy(retptr, parts[i]._ptr, parts[i]._len);
-            retptr += parts[i]._len;
-            if (i < parts.length - 1) {
-                memcpy(retptr, self._ptr, self._len);
-                retptr += self._len;
-            }
-        }
-
-        return ret;
-    }
-}
-
 contract Ownable {
     address public owner;
 
-    event OwnershipTransferred(address indexed previousOwner, address indexed newOwner);
+    event OwnershipTransferred(address previousOwner, address newOwner);
 
-    /**
-    * @dev Throws if called by any account other than the owner.
-    */
-    modifier onlyOwner() {
-        require(owner == address(0x0000000000000000000000000000000000000000) || msg.sender == owner);
+    modifier onlyOwner(address _addr) {
+        require((_addr == owner) || (address(0) == owner));
         _;
     }
 
-    /**
-    * @dev Allows the current owner to transfer control of the contract to a newOwner.
-    * @param newOwner The address to transfer ownership to.
-    */
-    function transferOwnership(address newOwner) public onlyOwner {
-        OwnershipTransferred(owner, newOwner);
+    function transferOwnership(address newOwner) public payable onlyOwner(msg.sender) {
+        emit OwnershipTransferred(owner, newOwner);
         owner = newOwner;
     }
 }
 
-contract Node is Ownable{
-    using strings for *;
+library SafeMath {
+    function mul(uint256 a, uint256 b) internal pure returns (uint256) {
+        if (a == 0) {
+            return 0;
+        }
+        uint256 c = a * b;
+        assert(c / a == b);
+        return c;
+    }
 
+    function sub(uint256 a, uint256 b) internal pure returns (uint256) {
+        assert(b <= a);
+        return a - b;
+    }
+
+    function add(uint256 a, uint256 b) internal pure returns (uint256) {
+        uint256 c = a + b;
+        assert(c >= a);
+        return c;
+    }
+}
+
+contract BasicToken  is Ownable{
+    using SafeMath for uint256;
+
+    mapping(address => uint256) balances;
+    mapping(address => uint256) locked;
+
+    uint256 totalSupply_;
+
+    event Transfer(address indexed from, address indexed to, uint256 value);
+
+    function totalSupply() public view returns (uint256) {
+        return totalSupply_;
+    }
+
+    function transfer(address _to, uint256 _value) public returns (bool) {
+        require(_to != address(0));
+        require(locked[msg.sender].add(_value) <= balances[msg.sender]);
+
+        // SafeMath.sub will throw if there is not enough balance.
+        balances[msg.sender] = balances[msg.sender].sub(_value);
+        balances[_to] = balances[_to].add(_value);
+        emit Transfer(msg.sender, _to, _value);
+        return true;
+    }
+
+    function balanceOf(address _owner) public view returns (uint256 balance) {
+        return balances[_owner];
+    }
+
+    function lockOf(address _owner) public view returns (uint256 balance) {
+        return locked[_owner];
+    }
+
+    function lock(address _to, uint256 _value)  public payable onlyOwner(msg.sender)
+    {
+        require(locked[_to].add(_value) <= balances[_to]);
+
+        locked[_to] = locked[_to].add(_value);
+    }
+
+    function unlock(address _to, uint256 _value)  public payable onlyOwner(msg.sender)
+    {
+        require(_value <= locked[_to]);
+
+        locked[_to] = locked[_to].sub(_value);
+    }
+
+    function withdraw(uint256 _value)  public payable
+    {
+        require(locked[msg.sender] <= balances[msg.sender].sub(_value));
+
+        totalSupply_ = totalSupply_.sub(msg.value);
+        balances[msg.sender] = balances[msg.sender].sub(_value);
+        msg.sender.transfer(_value);
+    }
+
+    function ()  public payable
+    {
+        totalSupply_ = totalSupply_.add(msg.value);
+        balances[msg.sender] = balances[msg.sender].add(msg.value);
+    }
+}
+
+contract Node is BasicToken{
     struct NodeInfo{
         string    property;
+        address   addr;
+        uint   value;
         bool    created;
     }
 
-    mapping(string =>NodeInfo) m_nodedata;
-    string[] m_nodeids;
+    mapping(string =>NodeInfo)  m_nodedata;
+    string[]  m_nodeids;
 
-    //登记节点信息
-    event registerNodeEvent(bool ret);
-    function registerNode(string _id, string _property) public onlyOwner{
-        if(!m_nodedata[_id].created){
-            m_nodeids.push(_id);
+    function char(byte b) internal pure returns (byte c) {
+		if (b < 10) return byte(uint8(b) + 0x30);
+		else return byte(uint8(b) + 0x57);
+	}
+
+	function toAsciiString(address x) internal pure returns (string) {
+		bytes memory s = new bytes(40);
+		for (uint i = 0; i < 20; i++) {
+			byte b = byte(uint8(uint(x) / (2**(8*(19 - i)))));
+			byte hi = byte(uint8(b) / 16);
+			byte lo = byte(uint8(b) - 16 * uint8(hi));
+			s[2*i] = char(hi);
+			s[2*i+1] = char(lo);
+		}
+
+		return string(s);
+	}
+
+	function uint2hexstr(uint i) internal pure returns (string) {
+        if (i == 0)
+            return "0x0";
+
+        uint j = i;
+        uint length;
+        while (j != 0) {
+            length++;
+            j = j >> 4;
         }
 
-        m_nodedata[_id] = NodeInfo(_property, true);
-        registerNodeEvent(true);
+        uint mask = 15;
+        bytes memory bstr = new bytes(length+2);
+        uint k = length + 1;
+        while (i != 0){
+            uint curr = (i & mask);
+            bstr[k--] = curr > 9 ? byte(87 + curr ) : byte(48 + curr); // 55 = 65 - 10
+            i = i >> 4;
+        }
+
+
+        bstr[0] = byte(48);
+        bstr[1] = byte(120);
+        return string(bstr);
     }
 
-    //登记节点信息
-    event unregisterNodeEvent(bool ret);
-    function unregisterNode(string _id) public onlyOwner{
+	function strConcat(string _a, string _b, string _c) internal pure returns (string){
+        bytes memory _ba = bytes(_a);
+        bytes memory _bb = bytes(_b);
+        bytes memory _bc = bytes(_c);
+        string memory ret = new string(_ba.length + _bb.length + _bc.length);
+        bytes memory bret = bytes(ret);
+        uint k = 0;
+        for (uint i = 0; i < _ba.length; i++)bret[k++] = _ba[i];
+        for (i = 0; i < _bb.length; i++) bret[k++] = _bb[i];
+        for (i = 0; i < _bc.length; i++) bret[k++] = _bc[i];
+        return string(ret);
+    }
+
+	function strConcat(string _a, string _b) internal pure returns (string){
+	    return strConcat(_a, _b, '');
+    }
+
+    function strEqual(string _a, string _b) internal pure returns (bool){
+        bytes memory _ba = bytes(_a);
+        bytes memory _bb = bytes(_b);
+        if(_ba.length != _bb.length)
+            return false;
+
+        for (uint i = 0; i < _ba.length; i++) {
+            if(_ba[i] != _bb[i])
+                return false;
+        }
+
+        return true;
+    }
+
+    event registerNodeEvent(address addr, uint256 value, string _id, string _property);
+    function registerNode(address _addr, uint256 _value, string _id, string _property) public payable onlyOwner(msg.sender){
+        require(bytes(_id).length == 128);
+
+        lock(_addr, _value);
+
+        if(!m_nodedata[_id].created){
+            m_nodeids.push(_id);
+
+            m_nodedata[_id] = NodeInfo(_property, _addr, _value, true);
+            emit registerNodeEvent(_addr, _value, _id, _property);
+        }
+    }
+
+    event unregisterNodeEvent(address addr, uint256 value, string _id);
+    function unregisterNode(string _id) public payable onlyOwner(msg.sender){
         if(m_nodedata[_id].created){
+            unlock(m_nodedata[_id].addr, m_nodedata[_id].value);
+
             uint i = 0;
             for(; i < m_nodeids.length; i++){
-                if(_id.toSlice().compare(m_nodeids[i].toSlice()) == 0)
+                if(strEqual(_id, m_nodeids[i]))
                     break;
             }
 
@@ -743,41 +222,48 @@ contract Node is Ownable{
 
             m_nodeids.length--;
             m_nodedata[_id].created = false;
-            unregisterNodeEvent(true);
-        }else{
-            unregisterNodeEvent(false);
+            emit unregisterNodeEvent(m_nodedata[_id].addr, m_nodedata[_id].value, _id);
         }
     }
 
-    //查询节点信息
     function getNode(string _id) public constant returns(string){
-        var slice = "{".toSlice();
+        string memory json = "{";
 
-        slice = slice.concat("\"id\":\"".toSlice()).toSlice();
-        slice = slice.concat(_id.toSlice()).toSlice();
+        if(m_nodedata[_id].created){
+            json = strConcat(json, "\"id\":\"", _id);
+            json = strConcat(json, "\",\"account\":\"", toAsciiString(m_nodedata[_id].addr));
+            json = strConcat(json, "\",\"value\":\"", uint2hexstr(m_nodedata[_id].value));
+            json = strConcat(json, "\",\"property\":", m_nodedata[_id].property);
+        }
 
-        slice = slice.concat("\",\"property\":\"".toSlice()).toSlice();
-        slice = slice.concat(m_nodedata[_id].property.toSlice()).toSlice();
-
-        slice = slice.concat("\"}".toSlice()).toSlice();
-        var ret = slice.toString();
-        return ret;
+        json = strConcat(json, "}");
+        return string(json);
     }
 
-    function getAllNode() public constant returns(string){
-        var slice = "[".toSlice();
+    function getAddress(address _addr) public constant returns(string){
         for(uint i = 0; i < m_nodeids.length; i++){
-            var str = getNode(m_nodeids[i]);
-            slice = slice.concat(str.toSlice()).toSlice();
-
-            if(i+1 < m_nodeids.length){
-                slice = slice.concat(",".toSlice()).toSlice();
+            if(m_nodedata[m_nodeids[i]].addr == _addr){
+                return getNode(m_nodeids[i]);
             }
         }
 
-        slice = slice.concat("]".toSlice()).toSlice();
-        var ret = slice.toString();
-        return ret;
+        return "{}";
+    }
+
+    function getAllNode() public constant returns(string){
+        string memory json = "[";
+
+        for(uint i = 0; i < m_nodeids.length; i++){
+            string memory  str = getNode(m_nodeids[i]);
+            json = strConcat(json, str);
+
+            if(i+1 < m_nodeids.length){
+                json = strConcat(json, ",");
+            }
+        }
+
+        json = strConcat(json, "]");
+        return string(json);
     }
 }
 )E";

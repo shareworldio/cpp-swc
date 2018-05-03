@@ -40,7 +40,7 @@ using namespace std;
 using namespace dev;
 using namespace solidity;
 
-#define NODE_NAME "Node.sol"
+#define NODE_NAME ":Node"
 
 std::string readCodeFile(std::string const& _file)
 {
@@ -88,7 +88,7 @@ std::string compileNodeAbi()
 
 		std::string name = NODE_NAME;
 		CompilerStack compiler(fileReader);
-		compiler.addSource(name, c_node_code);
+		compiler.addSource(std::string(), c_node_code);
 		compiler.setOptimiserSettings(true, 200);
 
 		bool successful = compiler.compile();
@@ -156,7 +156,6 @@ std::string compileNodeAbi()
 
 std::string compileNode()
 {
-	//return compileFile(NODE_NAME);
 	return compileCode(NODE_NAME, c_node_code);
 }
 
@@ -165,7 +164,7 @@ std::string nodeAddress()
 	return "0x0000000000000000000000000000000000000110";
 }
 
-std::string compileCode(std::string name, std::string code)
+std::string compileCode(std::string _name, std::string _code)
 {
 	ReadCallback::Callback fileReader = [](string const& _path)
 	{
@@ -190,18 +189,18 @@ std::string compileCode(std::string name, std::string code)
 	try{
 
 		CompilerStack compiler(fileReader);
-		compiler.addSource(name, code);
+		compiler.addSource(std::string(), _code);
 		compiler.setOptimiserSettings(true, 200);
 
 		bool successful = compiler.compile();
-		//cout << "successful=" << successful << endl;
 		if(successful){
 			vector<string> contracts = compiler.contractNames();
 
 			for (string const& contractName: contracts){
-				if(contractName.substr(0, name.length()) == name){
+				//cout << (const char*)__FUNCTION__ << ":" << __LINE__ << "::" << "contractName=" << contractName << endl;
+				if(contractName.substr(0, _name.length()) == _name){
 					auto runtimeObject = compiler.runtimeObject(contractName).toHex();
-					cout << "contractName=" << contractName << endl;
+					//cout << (const char*)__FUNCTION__ << ":" << __LINE__ << "::" << "contractName=" << contractName << endl;
 					return runtimeObject;
 				}
 			}
@@ -248,14 +247,13 @@ std::string compileCode(std::string name, std::string code)
 	return "";
 }
 
-std::string compileFile(std::string name)
+std::string compileFile(std::string _name, std::string _contract_name)
 {
-	string code = readCodeFile(name);
+	string code = readCodeFile(_name);
 	
 	if(code.empty())
 		return std::string();
 
-	cout << "name=" << name << ",code == c_node_code=" << (code == c_node_code) << endl;
-	return compileCode(name, code);
+	return compileCode(_contract_name, code);
 }
 

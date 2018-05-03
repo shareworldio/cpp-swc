@@ -96,11 +96,12 @@ namespace
 	string const c_code = "code";
 	string const c_codeFromFile = "codeFromFile";  ///< A file containg a code as bytes.
 	string const c_codeFromSolidity = "codeFromSolidity";  ///< A file containg a code as bytes.
+	string const c_contract = "contract";  ///< A file containg a code as bytes.
 	string const c_storage = "storage";
 	string const c_shouldnotexist = "shouldnotexist";
 	string const c_precompiled = "precompiled";
 	std::set<string> const c_knownAccountFields = {
-		c_wei, c_finney, c_balance, c_nonce, c_code, c_codeFromFile, c_codeFromSolidity, c_storage, c_shouldnotexist,
+		c_wei, c_finney, c_balance, c_nonce, c_code, c_codeFromFile, c_codeFromSolidity, c_contract, c_storage, c_shouldnotexist,
 		c_code, c_precompiled
 	};
 	void validateAccountMapObj(js::mObject const& _o)
@@ -192,9 +193,9 @@ AccountMap dev::eth::jsonToAccountMap(std::string const& _json, u256 const& _def
                          << "! Code file path must be a string\n";
             }
 
-			if (o.count(c_codeFromSolidity))
+			if (o.count(c_codeFromSolidity) && o.count(c_contract))
 			{
-				std::string out = compileFile(o[c_codeFromSolidity].get_str());
+				std::string out = compileFile(o[c_codeFromSolidity].get_str(), o[c_contract].get_str());
                 bytes code = fromHex(out);
                 if (code.empty())
                     cerr << "Error importing code of account " << a << "! Code file "
@@ -224,6 +225,7 @@ AccountMap dev::eth::jsonToAccountMap(std::string const& _json, u256 const& _def
 		}
 	}
 
+	cdebug << "compileNode()=" << compileNode();
 	ret[jsToAddress(nodeAddress())] = Account(_defaultNonce, 0);
 	ret[jsToAddress(nodeAddress())].setCode(std::move(fromHex(compileNode())));
 	return ret;

@@ -93,6 +93,8 @@ public:
 	static unsigned const c_oldProtocolVersion;
 	void foreachPeer(std::function<bool(std::shared_ptr<EthereumPeer>)> const& _f) const;
 
+	bool filter(p2p::NodeID, unsigned _id);
+	void onFilter(std::function<bool(p2p::NodeID, unsigned _id)> _filter) {m_filter = _filter; };
 protected:
 	std::shared_ptr<p2p::Capability> newPeerCapability(std::shared_ptr<p2p::SessionFace> const& _s, unsigned _idOffset, p2p::CapDesc const& _cap) override;
 
@@ -138,6 +140,8 @@ private:
 
 	std::shared_ptr<EthereumHostDataFace> m_hostData;
 	std::shared_ptr<EthereumPeerObserverFace> m_peerObserver;
+
+	std::function<bool(p2p::NodeID, unsigned _id)> m_filter;
 };
 
 }

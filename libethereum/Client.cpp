@@ -969,4 +969,10 @@ std::string Client::getOwner()
 	return out;
 }
 
+void Client::onFilter(std::function<bool(p2p::NodeID, unsigned _id)> _filter)
+{ 
+	if (auto h = m_host.lock()) 
+		h->onFilter(_filter);
+}
+
 

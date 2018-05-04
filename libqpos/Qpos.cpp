@@ -55,7 +55,7 @@ bool Qpos::interpret(QposPeer* _p, unsigned _id, RLP const& _r)
 		return true;
 	}
 
-	bool contain = (find(m_miner_list.begin(), m_miner_list.end(), _p->id()) != m_miner_list.end());
+	bool contain = m_miners.count(_p->id());
 	if(!contain){
 		cdebug << "interpret _p->id()=" << _p->id() << ",_id=" << _id << ",msgType=" << msgType;
 		return true;
@@ -111,14 +111,13 @@ void Qpos::reportBlockSelf()
 	m_blockNumber = blockNumber;
 	m_blockNumberRecv = blockNumber;
 
-	assert(getNodes(m_miner_list));
+	assert(getNodes(m_miners));
 
-	auto ourIt = find(m_miner_list.begin(), m_miner_list.end(), id());
-	bool contain = (ourIt != m_miner_list.end());
-	if(m_miner_list.size() == 1 && contain)
+	if(m_miners.empty()){
 		m_isLeader = true;
-	if(!contain && m_isLeader)
+	}else if(!m_miners.count(id()) && m_isLeader){
 		m_isLeader = false;
+	}
 
 	resetConfig();
 }
@@ -134,7 +133,7 @@ void Qpos::resetConfig()
 	m_consensusState = qposInitial;
 
 	cdebug << "m_consensusState=" << m_consensusState << ",nodeCount()=" << nodeCount();
-	cdebug << ",id()=" << id() << ",m_currentView=" << (unsigned)m_currentView << ",m_miner_list.size()=" << m_miner_list.size() << ",m_isLeader=" << m_isLeader;
+	cdebug << ",id()=" << id() << ",m_currentView=" << (unsigned)m_currentView << ",m_miners.size()=" << m_miners.size() << ",m_isLeader=" << m_isLeader;
 }
 
 void Qpos::signalHandler(const boost::system::error_code& err, int signal)
@@ -173,11 +172,32 @@ void Qpos::initEnv(class Client *_c, p2p::Host *_host, BlockChain* _bc)
 		}
 		cdebug << "_host.onTick**************************************************************************************** m_hostTid =" << m_hostTid;
 	});
+
+	_c->onFilter([=](p2p::NodeID _nodeid, unsigned _id) -> bool{
+		if(m_miners.empty())
+			return true;
+		
+		bool contain = m_miners.count(_nodeid);
+		cdebug << "_nodeid=" << _nodeid << ",_id=" << _id << ",contain=" << contain;
+		if(contain)
+			return true;
+
+		switch(_id)
+		{
+			case BlockHeadersPacket:
+			case BlockBodiesPacket:
+			case NewBlockPacket:
+			case NewBlockHashesPacket:
+				return false;
+		}
+		
+		return true;
+	});
 }
 
 int64_t Qpos::nodeCount() const
 {
-	return m_miner_list.size();
+	return m_miners.size();
 }
 
 bool Qpos::msgVerify(const NodeID &_nodeID, bytes const&  _msg, h520 const&  _msgSign)
@@ -250,9 +270,10 @@ void Qpos::voteBlockEnd()
 			if(m_onSealGenerated){
 				std::vector<std::pair<u256, Signature>> sig_list;
 
-				for(size_t i = 0; i < m_miner_list.size(); i++){
-					if(m_idVoted.count(m_miner_list[i])){
-						sig_list.push_back(std::make_pair(u256(i), m_idVoted[m_miner_list[i]]));
+				size_t i = 0;
+				for(auto it : m_miners){
+					if(m_idVoted.count(it)){
+						sig_list.push_back(std::make_pair(u256(i++), m_idVoted[it]));
 					}
 				}
 
@@ -363,7 +384,7 @@ void Qpos::voteTick()
 		msg << qposHeart;
 		msg << m_currentView;
 
-		multicast(m_miner_list, msg);
+		multicast(m_miners, msg);
 	}else{
 		m_voteTimeOut = now + QPOS_VOTE_TIMEOUT;
 		
@@ -373,7 +394,7 @@ void Qpos::voteTick()
 		msg << m_blockNumber;
 
 		m_voted.clear();
-		multicast(m_miner_list, msg);
+		multicast(m_miners, msg);
 	}
 
 	//cdebug << "m_currentView=" << m_currentView << ",m_isLeader=" << m_isLeader << ",now=" << now;
@@ -432,7 +453,7 @@ void Qpos::voteBlockBegin()
 	m_consensusTimeOut = utcTime() + m_consensusTimeInterval;
 	m_consensusState = qposWaitingVote;
 	
-	if(1 == m_miner_list.size()){
+	if(1 >= m_miners.size()){
 		voteBlockEnd();
 		return;
 	}
@@ -444,8 +465,8 @@ void Qpos::voteBlockBegin()
 	msg << m_blockBytes; 
 
 	m_voteTimeOut = utcTime() + QPOS_HEART_TIMEOUT;
-	multicast(m_miner_list, msg);
-	cdebug << ",header.hash(WithoutSeal)=" << header.hash(WithoutSeal) << ",mySign=" << mySign << ",m_blockBytes.size()=" << m_blockBytes.size() << ",m_miner_list.size()=" << m_miner_list.size();
+	multicast(m_miners, msg);
+	cdebug << ",header.hash(WithoutSeal)=" << header.hash(WithoutSeal) << ",mySign=" << mySign << ",m_blockBytes.size()=" << m_blockBytes.size() << ",m_miners.size()=" << m_miners.size();
 }
 
 void Qpos::generateSealBegin(bytes const& _block)
@@ -458,8 +479,7 @@ void Qpos::generateSealBegin(bytes const& _block)
 	
 	m_blockBytes = _block;
 
-	cdebug << "m_miner_list.size()=" << m_miner_list.size() << ",m_consensusState=" << m_consensusState << ",m_blockBytes.size()=" << m_blockBytes.size();
-	assert(m_miner_list.size() >= 1);
+	cdebug << "m_miners.size()=" << m_miners.size() << ",m_consensusState=" << m_consensusState << ",m_blockBytes.size()=" << m_blockBytes.size();
 
 	voteBlockBegin();
 }
@@ -491,7 +511,7 @@ bool Qpos::shouldSeal(Interface * _client)
 h512s Qpos::getMinerNodeList()
 {	
 	h512s ret;
-	for(auto i : m_miner_list)
+	for(auto i : m_miners)
 		ret.push_back(i);
 
 	return ret;

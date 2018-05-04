@@ -245,6 +245,10 @@ bool EthereumPeer::interpret(unsigned _id, RLP const& _r)
     if (!observer || !hostData)
         return false;
 
+	EthereumHost *host = dynamic_cast<EthereumHost*>(hostCapability());
+	if(!host->filter(id(), _id))
+		return true;
+
     m_lastAsk = std::chrono::system_clock::to_time_t(chrono::system_clock::now());
     try
     {

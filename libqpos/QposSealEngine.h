@@ -95,7 +95,7 @@ protected:
 	bool getMinerList(set<NodeID> &_nodes, int _blk_no = LatestBlock) const;
 	bool getMinerList(h512s &_miner_list, int _blk_no = LatestBlock) const;
 
-	bool getNodes(h512s &_miner_list);
+	bool getNodes(set<NodeID> &_miner_list);
 		
 	Signature sign(h256 const& _hash){return dev::sign(m_pair.secret(), _hash);};
 	bool verify(Signature const& _s, h256 const& _hash){return dev::verify(m_pair.pub(), _s, _hash);};
@@ -115,7 +115,7 @@ private:
 private:
 	class Client *m_client = 0;
 	QposHost* m_LeaderHost = 0;
-	p2p::Host* m_host = 0;
+	p2p::Host* m_p2pHost = 0;
 	KeyPair m_pair = KeyPair::create();
 	BlockChain *m_bc;
 	std::vector<p2p::NodeSpec> m_exNodes;

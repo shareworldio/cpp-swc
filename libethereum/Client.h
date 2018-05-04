@@ -218,6 +218,7 @@ public:
 	virtual std::string getNodes(std::string const& _node) override;
 	virtual std::string getNodeAbi()        const override;   
 	virtual std::string getOwner()     override;
+	void onFilter(std::function<bool(p2p::NodeID, unsigned _id)> _filter);
 protected:
     /// Perform critical setup functions.
     /// Must be called in the constructor of the finally derived class.
@@ -248,7 +249,6 @@ protected:
 
     /// Submit
     virtual bool submitSealed(bytes const& _s);
-
 protected:
     /// Called when Worker is starting.
     void startedWorking() override;

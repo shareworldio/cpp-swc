@@ -53,16 +53,16 @@ QposSealEngine::QposSealEngine()
 void QposSealEngine::initEnv(class Client *_c, p2p::Host *_host, BlockChain* _bc)
 {
 	m_client = _c;
-	m_host = _host;
+	m_p2pHost = _host;
 	m_pair = _host->keyPair();
 	m_bc = _bc;
 
 	m_LeaderHost = new QposHost(this);
 	std::shared_ptr<QposHost> ptr(m_LeaderHost);// = std::make_shared<LeaderHostCapability>();
-	m_host->registerCapability(ptr);
+	m_p2pHost->registerCapability(ptr);
 
 	for(auto it : m_client->chainParams().exnodes){
-		//m_host->addPeer(it, PeerType::Required);
+		//m_p2pHost->addPeer(it, PeerType::Required);
 		m_exNodes.push_back(it);
 	}
 
@@ -169,33 +169,30 @@ bool QposSealEngine::getMinerList(set<NodeID> &_nodes, int _blk_no) const
 
 	try{
 		string out = m_client->getNodes("");
-		if(out == "[]" || out == ""){
-			_nodes.insert(id());
-		}else{
-			js::mValue val;
-			json_spirit::read_string_or_throw(out, val);
-			js::mArray array = val.get_array();
 
-			for (size_t i = 0; i < array.size(); ++i)
-			{
-				cdebug << "out=" << out << ",i=" << i;
-				try{
-					js::mValue v = array[i];
-					js::mObject o = v.get_obj();
-					auto it = o.find("id");
-					auto& codeObj = it->second;
+		js::mValue val;
+		json_spirit::read_string_or_throw(out, val);
+		js::mArray array = val.get_array();
 
-		            if (codeObj.type() != json_spirit::str_type)
-		            {
-		            	continue;
-		            }
+		for (size_t i = 0; i < array.size(); ++i)
+		{
+			cdebug << "out=" << out << ",i=" << i;
+			try{
+				js::mValue v = array[i];
+				js::mObject o = v.get_obj();
+				auto it = o.find("id");
+				auto& codeObj = it->second;
 
-					auto& id = codeObj.get_str();
-					cdebug << "i=" << i << ",id=" << id;
-					_nodes.insert(NodeID(id));
-				}catch(...){
-					cdebug << "parse json err i=" << i;
-				}
+	            if (codeObj.type() != json_spirit::str_type)
+	            {
+	            	continue;
+	            }
+
+				auto& id = codeObj.get_str();
+				cdebug << "i=" << i << ",id=" << id;
+				_nodes.insert(NodeID(id));
+			}catch(...){
+				cdebug << "parse json err i=" << i;
 			}
 		}
 
@@ -207,7 +204,7 @@ bool QposSealEngine::getMinerList(set<NodeID> &_nodes, int _blk_no) const
 		if(exnodesAnyone){
 			_nodes.insert(id());
 
-			for (auto it : m_host->getPeers()){
+			for (auto it : m_p2pHost->getPeers()){
 				_nodes.insert(it.id);
 			}
 			
@@ -235,10 +232,13 @@ bool QposSealEngine::getMinerList(h512s &_miner_list, int _blk_no) const
 
 }
 
-bool QposSealEngine::getNodes(h512s &_miner_list) 
+bool QposSealEngine::getNodes(set<NodeID> &_miner_list) 
 {
 	DEV_RECURSIVE_GUARDED(x_nodes)
-		_miner_list = m_nodes;
+	{
+		for(auto it : m_nodes)
+			_miner_list.insert(it);
+	}
 
 	return true;
 }

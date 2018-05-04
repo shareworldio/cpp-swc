@@ -657,3 +657,12 @@ shared_ptr<Capability> EthereumHost::newPeerCapability(shared_ptr<SessionFace> c
 
 	return ret;
 }
+
+bool EthereumHost::filter(p2p::NodeID _nodeid, unsigned _id)
+{
+	if(m_filter != nullptr)
+		return m_filter(_nodeid, _id);
+
+	return true;
+}
+

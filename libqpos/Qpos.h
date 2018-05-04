@@ -81,7 +81,7 @@ private:
 	std::atomic<int64_t> m_blockReport = {0};
 	int64_t m_blockNumber = 0;
 	int64_t m_blockNumberRecv = 0;
-	h512s m_miner_list;
+	set<NodeID> m_miners;
 	
 	bytes m_blockBytes;
 	int64_t m_currentView = 0;

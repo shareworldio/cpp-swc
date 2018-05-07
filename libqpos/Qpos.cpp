@@ -113,7 +113,7 @@ void Qpos::reportBlockSelf()
 
 	assert(getNodes(m_miners));
 
-	if(m_miners.empty()){
+	if(m_miners.empty() || (1 == m_miners.size() && m_miners.count(id())) ){
 		m_isLeader = true;
 	}else if(!m_miners.count(id()) && m_isLeader){
 		m_isLeader = false;

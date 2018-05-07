@@ -7,13 +7,12 @@ pragma solidity ^0.4.14;
 contract Ownable {
     address public owner;
 
-    event OwnershipTransferred(address previousOwner, address newOwner);
-
     modifier onlyOwner(address _addr) {
         require((_addr == owner) || (address(0) == owner));
         _;
     }
 
+    event OwnershipTransferred(address previousOwner, address newOwne);
     function transferOwnership(address newOwner) public payable onlyOwner(msg.sender) {
         emit OwnershipTransferred(owner, newOwner);
         owner = newOwner;
@@ -50,12 +49,11 @@ contract BasicToken  is Ownable{
 
     uint256 totalSupply_;
 
-    event Transfer(address indexed from, address indexed to, uint256 value);
-
     function totalSupply() public view returns (uint256) {
         return totalSupply_;
     }
 
+    event Transfer(address from, address to, uint256 value);
     function transfer(address _to, uint256 _value) public returns (bool) {
         require(_to != address(0));
         require(locked[msg.sender].add(_value) <= balances[msg.sender]);
@@ -75,20 +73,25 @@ contract BasicToken  is Ownable{
         return locked[_owner];
     }
 
+    event Lock(address to, uint256 value);
     function lock(address _to, uint256 _value)  public payable onlyOwner(msg.sender)
     {
         require(locked[_to].add(_value) <= balances[_to]);
 
         locked[_to] = locked[_to].add(_value);
+        emit Lock(_to, _value);
     }
 
+    event Unlock(address to, uint256 value);
     function unlock(address _to, uint256 _value)  public payable onlyOwner(msg.sender)
     {
         require(_value <= locked[_to]);
 
         locked[_to] = locked[_to].sub(_value);
+        emit Unlock(_to, _value);
     }
 
+    event Withdraw(address sender, uint256 value);
     function withdraw(uint256 _value)  public payable
     {
         require(locked[msg.sender] <= balances[msg.sender].sub(_value));
@@ -96,12 +99,15 @@ contract BasicToken  is Ownable{
         totalSupply_ = totalSupply_.sub(msg.value);
         balances[msg.sender] = balances[msg.sender].sub(_value);
         msg.sender.transfer(_value);
+        emit Withdraw(msg.sender, _value);
     }
 
+    event Recharge(address sender, uint256 value);
     function ()  public payable
     {
         totalSupply_ = totalSupply_.add(msg.value);
         balances[msg.sender] = balances[msg.sender].add(msg.value);
+        emit Recharge(msg.sender, msg.value);
     }
 }
 
@@ -194,36 +200,35 @@ contract Node is BasicToken{
     event registerNodeEvent(address addr, uint256 value, string _id, string _property);
     function registerNode(address _addr, uint256 _value, string _id, string _property) public payable onlyOwner(msg.sender){
         require(bytes(_id).length == 128);
+        require(!m_nodedata[_id].created);
 
         lock(_addr, _value);
 
-        if(!m_nodedata[_id].created){
-            m_nodeids.push(_id);
+        m_nodeids.push(_id);
 
-            m_nodedata[_id] = NodeInfo(_property, _addr, _value, true);
-            emit registerNodeEvent(_addr, _value, _id, _property);
-        }
+        m_nodedata[_id] = NodeInfo(_property, _addr, _value, true);
+        emit registerNodeEvent(_addr, _value, _id, _property);
     }
 
     event unregisterNodeEvent(address addr, uint256 value, string _id);
     function unregisterNode(string _id) public payable onlyOwner(msg.sender){
-        if(m_nodedata[_id].created){
-            unlock(m_nodedata[_id].addr, m_nodedata[_id].value);
+        require(m_nodedata[_id].created);
+        
+        unlock(m_nodedata[_id].addr, m_nodedata[_id].value);
 
-            uint i = 0;
-            for(; i < m_nodeids.length; i++){
-                if(strEqual(_id, m_nodeids[i]))
-                    break;
-            }
-
-            for(; i < m_nodeids.length-1; i++){
-                m_nodeids[i] = m_nodeids[i+1];
-            }
-
-            m_nodeids.length--;
-            m_nodedata[_id].created = false;
-            emit unregisterNodeEvent(m_nodedata[_id].addr, m_nodedata[_id].value, _id);
+        uint i = 0;
+        for(; i < m_nodeids.length; i++){
+            if(strEqual(_id, m_nodeids[i]))
+                break;
         }
+
+        for(; i < m_nodeids.length-1; i++){
+            m_nodeids[i] = m_nodeids[i+1];
+        }
+
+        m_nodeids.length--;
+        m_nodedata[_id].created = false;
+        emit unregisterNodeEvent(m_nodedata[_id].addr, m_nodedata[_id].value, _id);
     }
 
     function getNode(string _id) public constant returns(string){
@@ -241,13 +246,26 @@ contract Node is BasicToken{
     }
 
     function getAddress(address _addr) public constant returns(string){
+        string memory json = "[";
+        bool isfirst = true;
+
         for(uint i = 0; i < m_nodeids.length; i++){
-            if(m_nodedata[m_nodeids[i]].addr == _addr){
-                return getNode(m_nodeids[i]);
+            if(m_nodedata[m_nodeids[i]].addr != _addr){
+                continue;
             }
+            
+            if(isfirst){
+                isfirst = false;
+            }else{
+                json = strConcat(json, ",");
+            }
+            
+            string memory  str = getNode(m_nodeids[i]);
+            json = strConcat(json, str);
         }
 
-        return "{}";
+        json = strConcat(json, "]");
+        return string(json);
     }
 
     function getAllNode() public constant returns(string){
@@ -266,4 +284,5 @@ contract Node is BasicToken{
         return string(json);
     }
 }
+
 )E";

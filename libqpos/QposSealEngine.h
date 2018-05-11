@@ -65,6 +65,9 @@ enum QposAccountType {
 class QposNode
 {
 public:
+	QposNode(NodeID _id, std::map<string, string> _property):m_id(_id), m_property(_property){};
+	bool operator < (const QposNode& _d) const{return this->m_id < _d.m_id;};
+	
 	NodeID m_id;
 	map<string, string> m_property;
 };
@@ -76,7 +79,7 @@ public:
 	std::string name() const override { return "QPOS"; }
 	static void init();
 	
-	virtual void initEnv(class Client *_c, p2p::Host *_host, BlockChain* _bc);
+	virtual void initEnv(class Client *_c, p2p::Host *_host, BlockChain* _bc, bool _importAnyNode);
 
 	void startGeneration();
 	//void cancelGeneration() override { stopWorking(); }
@@ -89,13 +92,13 @@ public:
 
 	//bool noteNewBlocks() const override { return true; }
 	virtual void generateSeal(bytes const& _block) = 0;
-	
+	void addPeers(std::set<QposNode>& _nodes);
 protected:
 	virtual void tick();
-	bool getMinerList(set<NodeID> &_nodes, int _blk_no = LatestBlock) const;
-	bool getMinerList(h512s &_miner_list, int _blk_no = LatestBlock) const;
+	bool getMinerList();
+	bool getMinerList(set<NodeID> &_miner_list, int _blk_no = LatestBlock) const;
 
-	bool getNodes(set<NodeID> &_miner_list);
+	bool getNodes(set<QposNode> &_miner_list);
 		
 	Signature sign(h256 const& _hash){return dev::sign(m_pair.secret(), _hash);};
 	bool verify(Signature const& _s, h256 const& _hash){return dev::verify(m_pair.pub(), _s, _hash);};
@@ -113,18 +116,22 @@ protected:
 private:
 	virtual void workLoop();	
 private:
-	class Client *m_client = 0;
-	QposHost* m_LeaderHost = 0;
-	p2p::Host* m_p2pHost = 0;
+	Client* m_client;
+	p2p::Host* m_p2pHost;
+	BlockChain* m_bc;
+
+	std::shared_ptr<QposHost> m_LeaderHost;
+	
 	KeyPair m_pair = KeyPair::create();
-	BlockChain *m_bc;
 	std::vector<p2p::NodeSpec> m_exNodes;
 	
 	bool exnodesMe = false;
 	bool exnodesAnyone = false;
-
+	
 	RecursiveMutex x_nodes;
-	h512s m_nodes;
+	std::set<QposNode> m_nodes;
+	std::string m_nodes_str;
+	bool m_nodes_changed = true;
 };
 
 }

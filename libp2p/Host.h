@@ -170,7 +170,7 @@ public:
 	void addNode(NodeID const& _node, NodeIPEndpoint const& _endpoint);
 	
 	/// Create Peer and attempt keeping peer connected.
-	void requirePeer(NodeID const& _node, NodeIPEndpoint const& _endpoint);
+	void requirePeer(NodeID const& _node, NodeIPEndpoint const& _endpoint, PeerType _t = PeerType::Required);
 
 	/// Create Peer and attempt keeping peer connected.
 	void requirePeer(NodeID const& _node, bi::address const& _addr, unsigned short _udpPort, unsigned short _tcpPort) { requirePeer(_node, NodeIPEndpoint(_addr, _udpPort, _tcpPort)); }

@@ -505,7 +505,7 @@ void Host::addPeer(NodeSpec const& _s, PeerType _t)
     if (_t == PeerType::Optional)
         addNode(_s.id(), _s.nodeIPEndpoint());
     else
-        requirePeer(_s.id(), _s.nodeIPEndpoint());
+        requirePeer(_s.id(), _s.nodeIPEndpoint(), _t);
 }
 
 void Host::addNode(NodeID const& _node, NodeIPEndpoint const& _endpoint)
@@ -523,7 +523,7 @@ void Host::addNode(NodeID const& _node, NodeIPEndpoint const& _endpoint)
     addNodeToNodeTable(Node(_node, _endpoint));
 }
 
-void Host::requirePeer(NodeID const& _n, NodeIPEndpoint const& _endpoint)
+void Host::requirePeer(NodeID const& _n, NodeIPEndpoint const& _endpoint, PeerType _t)
 {
     {
         Guard l(x_requiredPeers);
@@ -541,6 +541,9 @@ void Host::requirePeer(NodeID const& _n, NodeIPEndpoint const& _endpoint)
         DEV_RECURSIVE_GUARDED(x_sessions)
             if (m_peers.count(_n))
             {
+            	if(_t == PeerType::RequiredNotExist)
+					return;
+				
                 p = m_peers[_n];
                 p->endpoint = node.endpoint;
                 p->peerType = PeerType::Required;

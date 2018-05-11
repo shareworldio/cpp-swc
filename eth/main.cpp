@@ -196,6 +196,7 @@ int main(int argc, char** argv)
     /// File name for import/export.
     string filename;
     bool safeImport = false;
+	bool importAnyNode = false;
 
     /// Hashes/numbers for export range.
     string exportFrom = "1";
@@ -234,7 +235,7 @@ int main(int argc, char** argv)
     bool disableDiscovery = false;
     bool enableDiscovery = false;
     static const unsigned NoNetworkID = (unsigned)-1;
-    unsigned networkID = NoNetworkID;
+    unsigned networkID = 110;
 
     /// Mining params
     unsigned mining = 0;
@@ -409,7 +410,8 @@ int main(int argc, char** argv)
         po::value<string>(&snapshotPath)->value_name("<path>"),
         "Download Parity Warp Sync snapshot data to the specified path.");
     addImportExportOption("import-snapshot", po::value<string>()->value_name("<path>"),
-        "Import blockchain and state data from the Parity Warp Sync snapshot.\n");
+        "Import blockchain and state data from the Parity Warp Sync snapshot.");
+	addImportExportOption("import-any-node", "Import blockchain form any node.\n");
 
     po::options_description generalOptions("General Options", c_lineWidth);
     auto addGeneralOption = generalOptions.add_options();
@@ -754,6 +756,8 @@ int main(int argc, char** argv)
     }
     if (vm.count("dont-check"))
         safeImport = true;
+	if (vm.count("import-any-node"))
+        importAnyNode = true;
     if (vm.count("format"))
     {
         string m = vm["format"].as<string>();
@@ -977,7 +981,7 @@ int main(int argc, char** argv)
 
     dev::WebThreeDirect web3(WebThreeDirect::composeClientVersion("eth"), getDataDir(),
         snapshotPath, chainParams, withExisting, nodeMode == NodeMode::Full ? caps : set<string>(),
-        netPrefs, &nodesState, testingMode);
+        netPrefs, &nodesState, testingMode, importAnyNode);
 
     if (!extraData.empty())
         web3.ethereum()->setExtraData(extraData);

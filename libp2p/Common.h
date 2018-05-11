@@ -169,7 +169,8 @@ using PeerSessionInfos = std::vector<PeerSessionInfo>;
 enum class PeerType
 {
 	Optional,
-	Required
+	Required,
+	RequiredNotExist
 };
 
 /**

@@ -47,12 +47,15 @@ QposClient::QposClient(
     std::shared_ptr<GasPricer> _gpForAdoption,
     boost::filesystem::path const& _dbPath,
     boost::filesystem::path const& _snapshotPath,
+    bool importAnyNode,
     WithExisting _forceAction,
     TransactionQueue::Limits const& _limits
 ):
 	Client(_params, _networkID, _host, _gpForAdoption, _dbPath, _snapshotPath, _forceAction, _limits)
 {
 	// will throw if we're not an Qpos seal engine.
+	m_importAnyNode = importAnyNode;
+	
 	asQposClient(*this);
 
 	init(_params, _host);
@@ -74,7 +77,7 @@ void QposClient::init(ChainParams const&, p2p::Host *_host) {
 		}
 	});
 
-	raft()->initEnv(this, _host, &m_bc);
+	raft()->initEnv(this, _host, &m_bc, m_importAnyNode);
 	clog(ClientNote) << "Init QposClient success";
 }
 

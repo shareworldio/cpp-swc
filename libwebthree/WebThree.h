@@ -125,7 +125,7 @@ public:
         WithExisting _we = WithExisting::Trust,
         std::set<std::string> const& _interfaces = {"eth", "shh", "bzz"},
         p2p::NetworkPreferences const& _n = p2p::NetworkPreferences(),
-        bytesConstRef _network = bytesConstRef(), bool _testing = false);
+        bytesConstRef _network = bytesConstRef(), bool _testing = false, bool _importAnyNode = false);
 
     /// Destructor.
     ~WebThreeDirect() override;

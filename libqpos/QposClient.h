@@ -41,6 +41,7 @@ public:
 	    std::shared_ptr<GasPricer> _gpForAdoption,
 	    boost::filesystem::path const& _dbPath,
 	    boost::filesystem::path const& _snapshotPath,
+	    bool importAnyNode = false,
 	    WithExisting _forceAction = WithExisting::Trust,
 	    TransactionQueue::Limits const& _l = TransactionQueue::Limits {1024, 1024}
 	);
@@ -61,6 +62,7 @@ protected:
 
 	BlockHeader  m_last_commited_block;
 	bool m_noEmptyBlock = true;
+	bool m_importAnyNode;
 };
 
 QposClient& asQposClient(Interface& _c);

@@ -41,7 +41,7 @@ public:
 
 	virtual bool shouldSeal(Interface*);
 
-	virtual void initEnv(class Client *_c, p2p::Host *_host, BlockChain* _bc) override;
+	virtual void initEnv(class Client *_c, p2p::Host *_host, BlockChain* _bc, bool _importAnyNode) override;
 	virtual void generateSeal(bytes const& _block) override;
 	void generateSealBegin(bytes const& _block);
 
@@ -72,7 +72,7 @@ protected:
 	void addNodes(const std::string &_nodes);
 	int64_t nodeCount() const;
 	void signalHandler(const boost::system::error_code& err, int signal);
-	bool checkBlockSign(BlockHeader const& _header, std::vector<std::pair<u256, Signature>> _sign_list);
+	bool checkBlockSign(BlockHeader const& _header, std::vector<std::pair<Public, Signature>> _sign_list);
 private:
 	unsigned m_consensusTimeInterval = (20*TIME_PER_SECOND);
 
@@ -101,6 +101,7 @@ private:
 	int64_t m_voteTimeOut = 0;
 	set<NodeID> m_voted;
 	std::atomic<bool> m_isLeader = { false };
+	bool m_importAnyNode = false;
 };
 
 

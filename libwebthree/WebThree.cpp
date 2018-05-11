@@ -43,7 +43,7 @@ static_assert(BOOST_VERSION >= 106400, "Wrong boost headers version");
 WebThreeDirect::WebThreeDirect(std::string const& _clientVersion,
     boost::filesystem::path const& _dbPath, boost::filesystem::path const& _snapshotPath,
     eth::ChainParams const& _params, WithExisting _we, std::set<std::string> const& _interfaces,
-    NetworkPreferences const& _n, bytesConstRef _network, bool _testing)
+    NetworkPreferences const& _n, bytesConstRef _network, bool _testing, bool _importAnyNode)
   : m_clientVersion(_clientVersion), m_net(_clientVersion, _n, _network)
 {
     if (_dbPath.size())
@@ -57,7 +57,7 @@ WebThreeDirect::WebThreeDirect(std::string const& _clientVersion,
         if (_params.sealEngineName == "Ethash")
             m_ethereum.reset(new eth::EthashClient(_params, (int)_params.networkID, &m_net, shared_ptr<GasPricer>(), _dbPath, _snapshotPath, _we));
         else if (_params.sealEngineName == "QPOS") {
-			m_ethereum.reset(new eth::QposClient(_params, (int)_params.u256Param("networkID"), &m_net, shared_ptr<GasPricer>(), _dbPath, _snapshotPath, _we));
+			m_ethereum.reset(new eth::QposClient(_params, (int)_params.u256Param("networkID"), &m_net, shared_ptr<GasPricer>(), _dbPath, _snapshotPath, _importAnyNode, _we));
 		}else if (_params.sealEngineName == "NoProof" && _testing)
             m_ethereum.reset(new eth::ClientTest(_params, (int)_params.networkID, &m_net, shared_ptr<GasPricer>(), _dbPath, _we));
         else

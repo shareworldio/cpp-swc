@@ -61,7 +61,7 @@ bool Qpos::interpret(QposPeer* _p, unsigned _id, RLP const& _r)
 		return true;
 	}
 
-	cdebug << "interpret _p->id()=" << _p->id() << ",_id=" << _id << ",msgType=" << msgType << ",m_isLeader=" << (bool)m_isLeader;
+	//cdebug << "interpret _p->id()=" << _p->id() << ",_id=" << _id << ",msgType=" << msgType << ",m_isLeader=" << (bool)m_isLeader;
 	try{
 		switch(msgType){
 			case qposBlockVote:
@@ -111,7 +111,16 @@ void Qpos::reportBlockSelf()
 	m_blockNumber = blockNumber;
 	m_blockNumberRecv = blockNumber;
 
-	assert(getNodes(m_miners));
+	set<QposNode> miners;
+	if(getNodes(miners)){
+		m_miners.clear();
+		for(auto it : miners){
+			m_miners.insert(it.m_id);
+		}
+
+		if(!m_importAnyNode)
+			addPeers(miners);
+	}
 
 	if(m_miners.empty() || (1 == m_miners.size() && m_miners.count(id())) ){
 		m_isLeader = true;
@@ -148,15 +157,16 @@ void Qpos::signalHandler(const boost::system::error_code& err, int signal)
 	m_sigset->async_wait(boost::bind(&Qpos::signalHandler, this, _1, _2));
 }
 
-void Qpos::initEnv(class Client *_c, p2p::Host *_host, BlockChain* _bc)
+void Qpos::initEnv(class Client *_c, p2p::Host *_host, BlockChain* _bc, bool _importAnyNode)
 {
+	m_importAnyNode = _importAnyNode;
 	m_sigset = new signal_set(_host->ioService(), QPOS_SIGNAL, QPOS_SIGNAL_REPORT);
 	m_sigset->async_wait(boost::bind(&Qpos::signalHandler, this, _1, _2));
 
 	DumpStack();
 	
 	srand(utcTime());
-	QposSealEngine::initEnv(_c, _host, _bc);	
+	QposSealEngine::initEnv(_c, _host, _bc, _importAnyNode);
 
 	_host->onTick(1000, [=](const boost::system::error_code& _e) {
 		(void)_e;
@@ -166,18 +176,14 @@ void Qpos::initEnv(class Client *_c, p2p::Host *_host, BlockChain* _bc)
 	_host->onInit([=]() {
 		m_hostTid = gettidv1();
 
-		for(auto it : exNodes()){
-			if(it.id() != id())
-				_host->addPeer(it, p2p::PeerType::Required);
-		}
-		cdebug << "_host.onTick**************************************************************************************** m_hostTid =" << m_hostTid;
+		cdebug << "_host.onTick  m_hostTid =" << m_hostTid;
 	});
 
 	_c->onFilter([=](p2p::NodeID _nodeid, unsigned _id) -> bool{
-		if(m_miners.empty())
+		if(m_importAnyNode || m_miners.empty())
 			return true;
 		
-		bool contain = m_miners.count(_nodeid);
+		bool contain = m_miners.count(_nodeid); 
 		cdebug << "_nodeid=" << _nodeid << ",_id=" << _id << ",contain=" << contain;
 		if(contain)
 			return true;
@@ -440,8 +446,10 @@ void Qpos::onVoteAck(QposPeer* _p, RLP const& _r)
 		return;
 	
 	m_voted.insert(_p->id());
-	if((1+(int64_t)m_voted.size()) > nodeCount()/2)
+	if((1+(int64_t)m_voted.size()) > nodeCount()/2){
 		m_isLeader = true;
+		cdebug << "m_isLeader=" << m_isLeader << ",m_voted.size()=" << m_voted.size() << ",nodeCount()=" << nodeCount();
+	}
 }
 
 void Qpos::voteBlockBegin()
@@ -517,12 +525,12 @@ h512s Qpos::getMinerNodeList()
 	return ret;
 }
 
-bool Qpos::checkBlockSign(BlockHeader const& _header, std::vector<std::pair<u256, Signature>> _sign_list) 
+bool Qpos::checkBlockSign(BlockHeader const& _header, std::vector<std::pair<Public, Signature>> _sign_list) 
 {
 	Timer t;
 	cdebug << "PBFT::checkBlockSign " << _header.number();
 
-	h512s miner_list;
+	set<NodeID> miner_list;
 	if (!getMinerList(miner_list, static_cast<int>(_header.number() - 1))) {
 		cwarn << "checkBlockSign failed for getMinerList return false, blk=" <<  _header.number() - 1;
 		return false;
@@ -532,8 +540,7 @@ bool Qpos::checkBlockSign(BlockHeader const& _header, std::vector<std::pair<u256
 
 	unsigned singCount = 0;
 	for (auto item : _sign_list) {
-		unsigned idx = item.first.convert_to<unsigned>();
-		if (idx >=  miner_list.size() || !dev::verify(miner_list[idx], item.second, _header.hash(WithoutSeal))) {
+		if (!miner_list.count(item.first) || !dev::verify(item.first, item.second, _header.hash(WithoutSeal))) {
 			cdebug << "checkBlockSign failed, verify false, blk=" << _header.number() << ",hash=" << _header.hash(WithoutSeal);
 			continue;
 		}
@@ -546,5 +553,4 @@ bool Qpos::checkBlockSign(BlockHeader const& _header, std::vector<std::pair<u256
 	cdebug << "checkBlockSign success, blk=" << _header.number() << ",hash=" << _header.hash(WithoutSeal) << ",timecost=" << t.elapsed() / 1000 << "ms";
 	return false;
 }
-
 

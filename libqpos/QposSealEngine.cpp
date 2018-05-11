@@ -50,14 +50,18 @@ QposSealEngine::QposSealEngine()
 {
 }
 
-void QposSealEngine::initEnv(class Client *_c, p2p::Host *_host, BlockChain* _bc)
+void QposSealEngine::initEnv(class Client *_c, p2p::Host *_host, BlockChain* _bc, bool _importAnyNode)
 {
+	(void)_importAnyNode;
+	
 	m_client = _c;
 	m_p2pHost = _host;
-	m_pair = _host->keyPair();
 	m_bc = _bc;
-
-	m_LeaderHost = new QposHost(this);
+	
+	m_LeaderHost.reset(new QposHost(this));
+	
+	m_pair = _host->keyPair();
+	
 	std::shared_ptr<QposHost> ptr(m_LeaderHost);// = std::make_shared<LeaderHostCapability>();
 	m_p2pHost->registerCapability(ptr);
 
@@ -69,8 +73,7 @@ void QposSealEngine::initEnv(class Client *_c, p2p::Host *_host, BlockChain* _bc
 	const Address addr = jsToAddress(nodeAddress());
 	m_client->onImprted(addr, [&]()
 	{
-		DEV_RECURSIVE_GUARDED(x_nodes)
-			this->getMinerList(m_nodes);
+			this->getMinerList();
 	});
 	
 	exnodesMe = m_client->chainParams().exnodesMe;
@@ -163,81 +166,99 @@ void QposSealEngine::workLoop()
 	}*/
 }
 
-bool QposSealEngine::getMinerList(set<NodeID> &_nodes, int _blk_no) const 
+std::map<string,string> getValueMap(js::mValue &v)
 {
-	(void)_blk_no;
-
-	try{
-		string out = m_client->getNodes("");
-
-		js::mValue val;
-		json_spirit::read_string_or_throw(out, val);
-		js::mArray array = val.get_array();
-
-		for (size_t i = 0; i < array.size(); ++i)
-		{
-			cdebug << "out=" << out << ",i=" << i;
-			try{
-				js::mValue v = array[i];
-				js::mObject o = v.get_obj();
-				auto it = o.find("id");
-				auto& codeObj = it->second;
-
-	            if (codeObj.type() != json_spirit::str_type)
-	            {
-	            	continue;
-	            }
-
-				auto& id = codeObj.get_str();
-				cdebug << "i=" << i << ",id=" << id;
-				_nodes.insert(NodeID(id));
-			}catch(...){
-				cdebug << "parse json err i=" << i;
-			}
-		}
-
-		for(auto it : m_exNodes){
-			_nodes.insert(it.id());
-		}
-		if(exnodesMe)
-			_nodes.insert(id());
-		if(exnodesAnyone){
-			_nodes.insert(id());
-
-			for (auto it : m_p2pHost->getPeers()){
-				_nodes.insert(it.id);
-			}
-			
-		}
-
-		cdebug << "out=" << out << ",id()=" << id() << ",_nodes=" << _nodes;
-	}catch(...){
-		cdebug << "parse json err";
-	}
-		
-	return true;
-}
-
-bool QposSealEngine::getMinerList(h512s &_miner_list, int _blk_no) const 
-{
-	set<NodeID> nodes;
-	getMinerList(nodes, _blk_no);
+	std::map<string,string> m;
 	
-	_miner_list.clear();
+	if (v.type() != json_spirit::obj_type){
+	     return m;
+	}
+	
+	try{
+		for (auto const& it: v.get_obj()){
+			if(it.second.type() != json_spirit::str_type)
+				continue;
+			
+			m[it.first] = it.second.get_str();	
+		}
+	}catch(...){
+		m.clear();
+	}
 
-	for(auto it : nodes)
-		_miner_list.push_back(it);
-
-	return true;
-
+	return m;
 }
 
-bool QposSealEngine::getNodes(set<NodeID> &_miner_list) 
+std::set<QposNode> strToNode(string _str)
+{
+	std::set<QposNode> nodes;
+	js::mValue val;
+	json_spirit::read_string_or_throw(_str, val);
+	js::mArray array = val.get_array();
+
+	cdebug << "_str=" << _str;
+	for (size_t i = 0; i < array.size(); ++i)
+	{
+		try{
+			js::mValue v = array[i];
+			js::mObject o = v.get_obj();
+			auto it = o.find("id");
+			auto& codeObj = it->second;
+
+            if (codeObj.type() != json_spirit::str_type)
+            {
+            	continue;
+            }
+
+			auto& id = codeObj.get_str();
+			std::map<string,string> value;
+			it = o.find("property");
+			if(it != o.end())
+				value = getValueMap(it->second);
+
+			cdebug << "i=" << i << ",id=" << id;
+			nodes.insert(QposNode(NodeID(id), value));
+		}catch(...){
+			cdebug << "parse json err i=" << i;
+		}
+	}
+
+	return nodes;
+}
+
+bool QposSealEngine::getMinerList() 
 {
 	DEV_RECURSIVE_GUARDED(x_nodes)
 	{
-		for(auto it : m_nodes)
-			_miner_list.insert(it);
+		string out = m_client->getNodes("");
+		if(m_nodes_str == out)
+			return false;
+		
+		m_nodes_str = out;
+		m_nodes_changed = true;
+		m_nodes = (strToNode(m_nodes_str));
+		cdebug << "m_nodes_str=" << m_nodes_str;
+	}
+
+	return true;
+}
+
+bool QposSealEngine::getMinerList(set<NodeID> &_miner_list, int _blk_no) const 
+{
+	(void)_miner_list;
+	(void)_blk_no;
+
+	return true;
+}
+
+bool QposSealEngine::getNodes(set<QposNode> &_miner_list) 
+{
+	DEV_RECURSIVE_GUARDED(x_nodes)
+	{
+		if(!m_nodes_changed)
+			return false;
+
+		cdebug << "m_nodes_str=" << m_nodes_str;
+		_miner_list = m_nodes;
 	}
 
 	return true;
@@ -258,10 +279,28 @@ EVMSchedule const& QposSealEngine::evmSchedule(u256 const& _blockNumber) const
 	return DefaultSchedule;
 }
 
+void QposSealEngine::addPeers(std::set<QposNode>& _nodes)
+{
+	for(auto it : _nodes){
+		if(it.m_id == id())
+			continue;
+		
+		map<string, string> &property = it.m_property;
+
+		try{
+			if(property.count("ip") && property["ip"].length() > 0 && property.count("port") && property["port"].length() > 0){
+				string spec = string("enode://") + it.m_id.hex() + string("@") + property["ip"] + string(":") + property["port"];
+				cdebug << "spec=" << spec;
+				m_p2pHost->addPeer(p2p::NodeSpec(spec), p2p::PeerType::RequiredNotExist);
+			}
+		}catch(...){
+		}
+	}
+}
+
 void QposSealEngine::startGeneration()
 {
-	DEV_RECURSIVE_GUARDED(x_nodes)
-		this->getMinerList(m_nodes);
+	this->getMinerList();
 }
 
 

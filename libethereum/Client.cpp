@@ -592,11 +592,6 @@ void Client::onChainChanged(ImportRoute const& _ir)
 //  ctrace << "onChainChanged()";
     h256Hash changeds;
     onDeadBlocks(_ir.deadBlocks, changeds);
-    
-    onNewBlocks(_ir.liveBlocks, changeds);
-    if (!isMajorSyncing())
-        resyncStateFromChain();
-    noteChanged(changeds);
 
 	DEV_RECURSIVE_GUARDED(x_onImprted)
 	{
@@ -606,7 +601,18 @@ void Client::onChainChanged(ImportRoute const& _ir)
 				for(auto item : m_onImprted[t.to()])
 					item();
 			}
+	    }
+	}
+	
+    onNewBlocks(_ir.liveBlocks, changeds);
+    if (!isMajorSyncing())
+        resyncStateFromChain();
+    noteChanged(changeds);
 
+	DEV_RECURSIVE_GUARDED(x_onImprted)
+	{
+		for (auto const& t: _ir.goodTranactions)
+	    {
 			clog(ClientTrace) << "Safely dropping transaction " << t.sha3();
 	        m_tq.dropGood(t);
 	    }
@@ -931,12 +937,12 @@ ExecutionResult Client::call(Address const& _from, u256 _value, Address _dest, b
     return ret;
 }
 
-bytes Client::call(Address _dest, bytes const& _data)
+bytes Client::call(Address _dest, bytes const& _data, BlockNumber _blockNumber)
 {
-	return call(jsToAddress("0x007cce4866d8b9ef101da517c4592230d1b90e12"), u256(0), _dest, _data, Invalid256, Invalid256, LatestBlock, FudgeFactor::Lenient).output;
+	return call(jsToAddress("0x007cce4866d8b9ef101da517c4592230d1b90e12"), u256(0), _dest, _data, Invalid256, Invalid256, _blockNumber, FudgeFactor::Lenient).output;
 }
 
-std::string Client::getNodes(string const& _node)
+std::string Client::getNodes(string const& _node, BlockNumber _blockNumber)
 {
 	bytes data;
 	if(_node == "")
@@ -948,7 +954,7 @@ std::string Client::getNodes(string const& _node)
 		data = dev::eth::ContractABI().abiIn("getNode(string)", _node);
 	}
 
-	bytes result = call(jsToAddress(nodeAddress()), data);
+	bytes result = call(jsToAddress(nodeAddress()), data, _blockNumber);
 	string out = eth::abiOut<std::string>(result);
 
 	cdebug << "data=" << data << ",out=" << out;
@@ -963,7 +969,7 @@ std::string Client::getNodeAbi() const
 std::string Client::getOwner()
 {
 	bytes data = dev::eth::ContractABI().abiIn("owner()");
-	bytes result = call(jsToAddress(nodeAddress()), data);
+	bytes result = call(jsToAddress(nodeAddress()), data, LatestBlock);
 	string out = toJS(eth::abiOut<Address>(result));
 
 	return out;

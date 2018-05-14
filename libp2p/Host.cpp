@@ -117,7 +117,7 @@ Host::Host(string const& _clientVersion, KeyPair const& _alias, NetworkPreferenc
     m_alias(_alias),
     m_lastPing(chrono::steady_clock::time_point::min())
 {
-    clog(NetNote) << "Id:" << id();
+    clog(NetNote) << "Id:" << id().hex();
 }
 
 Host::Host(string const& _clientVersion, NetworkPreferences const& _n, bytesConstRef _restoreNetwork):

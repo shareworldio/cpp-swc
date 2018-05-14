@@ -122,8 +122,6 @@ AccountMap dev::eth::jsonToAccountMap(std::string const& _json, u256 const& _def
 
 	std::unordered_map<Address, Account> ret;
 
-	cdebug << "compileNodeAbi()=" << compileNodeAbi();
-
 	js::mValue val;
 	json_spirit::read_string_or_throw(_json, val);
 	js::mObject o = val.get_obj();
@@ -225,7 +223,6 @@ AccountMap dev::eth::jsonToAccountMap(std::string const& _json, u256 const& _def
 		}
 	}
 
-	cdebug << "compileNode()=" << compileNode();
 	ret[jsToAddress(nodeAddress())] = Account(_defaultNonce, 0);
 	ret[jsToAddress(nodeAddress())].setCode(std::move(fromHex(compileNode())));
 	return ret;

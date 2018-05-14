@@ -646,11 +646,14 @@ void BlockChainSync::collectBlocks()
 	size_t i = 0;
 	for (; i < headers.second.size() && i < bodies.second.size(); i++)
 	{
-		RLPStream blockStream(3);
-		blockStream.appendRaw(headers.second[i].data);
 		RLP body(bodies.second[i]);
-		blockStream.appendRaw(body[0].data());
-		blockStream.appendRaw(body[1].data());
+		
+		RLPStream blockStream(1 + body.itemCount());
+		blockStream.appendRaw(headers.second[i].data);
+
+		for(unsigned i = 0; i < body.itemCount(); i++)
+			blockStream.appendRaw(body[i].data());
+
 		bytes block;
 		blockStream.swapOut(block);
 		switch (host().bq().import(&block))

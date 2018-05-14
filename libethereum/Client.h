@@ -213,9 +213,9 @@ public:
     /// should be called after the constructor of the most derived class finishes.
     void startWorking() { Worker::startWorking(); };
 
-	virtual bytes call(Address _dest, bytes const& _data) override;
+	virtual bytes call(Address _dest, bytes const& _data, BlockNumber _blockNumber) override;
 	void onImprted(Address _contrant, std::function< void() > _f);
-	virtual std::string getNodes(std::string const& _node) override;
+	virtual std::string getNodes(std::string const& _node, BlockNumber _blockNumber) override;
 	virtual std::string getNodeAbi()        const override;   
 	virtual std::string getOwner()     override;
 	void onFilter(std::function<bool(p2p::NodeID, unsigned _id)> _filter);

@@ -117,7 +117,8 @@ void Qpos::reportBlockSelf()
 		for(auto it : miners){
 			m_miners.insert(it.m_id);
 		}
-
+		
+		cdebug << "m_importAnyNode=" << m_importAnyNode;
 		if(!m_importAnyNode)
 			addPeers(miners);
 	}

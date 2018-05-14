@@ -301,9 +301,11 @@ public:
 				bytes blockBytes = m_chain.block(h);
 				RLP block{blockBytes};
 				RLPStream body;
-				body.appendList(2);
-				body.appendRaw(block[1].data()); // transactions
-				body.appendRaw(block[2].data()); // uncles
+				body.appendList(block.itemCount());
+
+				for(unsigned i = 0; i < block.itemCount(); i++)
+					body.appendRaw(block[i+1].data()); // transactions
+
 				auto bodyBytes = body.out();
 				rlp.insert(rlp.end(), bodyBytes.begin(), bodyBytes.end());
 				++n;

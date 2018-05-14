@@ -466,7 +466,7 @@ Json::Value Eth::eth_listTransactionReceipts(string const& _from, string const& 
 std::string Eth::eth_getNodes(string const& _node)
 {
 	cdebug << "_node=" << _node;
-	return client()->getNodes(_node);
+	return client()->getNodes(_node, LatestBlock);
 }
 
 std::string Eth::eth_getNodeAbi()

@@ -229,7 +229,7 @@ bool QposSealEngine::getMinerList()
 {
 	DEV_RECURSIVE_GUARDED(x_nodes)
 	{
-		string out = m_client->getNodes("");
+		string out = m_client->getNodes("", LatestBlock);
 		if(m_nodes_str == out)
 			return false;
 		

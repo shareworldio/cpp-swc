@@ -268,6 +268,7 @@ protected:
 
     /// Called on chain changes
     virtual void onNewBlocks(h256s const& _blocks, h256Hash& io_changed);
+	virtual void reportBlocks(h256s const& _blocks){(void)_blocks;};
 
     /// Called after processing blocks by onChainChanged(_ir)
     void resyncStateFromChain();

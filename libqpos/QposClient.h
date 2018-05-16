@@ -57,7 +57,7 @@ public:
 protected:
 	void init(ChainParams const& _params, p2p::Host *_host);
 	void rejigSealing() override;
-	void onNewBlocks(h256s const& _blocks, h256Hash& io_changed) override;
+	void reportBlocks(h256s const& _blocks) override;
 	bool submitSealed(bytes const& _block, bool _isOurs);
 
 	BlockHeader  m_last_commited_block;

@@ -592,18 +592,7 @@ void Client::onChainChanged(ImportRoute const& _ir)
 //  ctrace << "onChainChanged()";
     h256Hash changeds;
     onDeadBlocks(_ir.deadBlocks, changeds);
-
-	DEV_RECURSIVE_GUARDED(x_onImprted)
-	{
-		for (auto const& t: _ir.goodTranactions)
-	    {
-			if(m_onImprted.count(t.to())){
-				for(auto item : m_onImprted[t.to()])
-					item();
-			}
-	    }
-	}
-	
+    
     onNewBlocks(_ir.liveBlocks, changeds);
     if (!isMajorSyncing())
         resyncStateFromChain();
@@ -613,10 +602,17 @@ void Client::onChainChanged(ImportRoute const& _ir)
 	{
 		for (auto const& t: _ir.goodTranactions)
 	    {
+			if(m_onImprted.count(t.to())){
+				for(auto item : m_onImprted[t.to()])
+					item();
+			}
+
 			clog(ClientTrace) << "Safely dropping transaction " << t.sha3();
 	        m_tq.dropGood(t);
 	    }
 	}
+
+	this->reportBlocks(_ir.liveBlocks);
 }
 
 bool Client::remoteActive() const

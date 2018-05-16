@@ -98,10 +98,8 @@ void QposClient::stopSealing() {
 	raft()->cancelGeneration();
 }
 
-void QposClient::onNewBlocks(h256s const& _blocks, h256Hash& io_changed)
+void QposClient::reportBlocks(h256s const& _blocks)
 {
-	Client::onNewBlocks(_blocks, io_changed);
-
 	unsigned blockNumber = 0;	
 	for(auto it : _blocks){
 		if(m_bc.number(it) > blockNumber)

@@ -179,6 +179,9 @@ public:
 	/// @returns the EVMSchedule in the context of the pending block.
 	virtual EVMSchedule evmSchedule() const { return EVMSchedule(); }
 
+	virtual bytes blockBytes(h256 _hash) const = 0;
+	bytes blockBytes(BlockNumber _block) const;
+	
 	BlockHeader blockInfo(BlockNumber _block) const;
 	BlockDetails blockDetails(BlockNumber _block) const;
 	Transaction transaction(BlockNumber _block, unsigned _i) const { auto p = transactions(_block); return _i < p.size() ? p[_i] : Transaction(); }

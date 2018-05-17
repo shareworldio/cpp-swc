@@ -570,3 +570,15 @@ Block ClientBase::block(BlockNumber _h) const
 		return preSeal();
 	return block(bc().numberHash(_h));
 }
+
+bytes ClientBase::blockBytes(h256 _hash) const
+{
+	if (_hash == PendingBlockHash){
+		RLPStream receiptRLP;
+        preSeal().info().streamRLP(receiptRLP);
+        return receiptRLP.out();
+	}
+
+	return bc().block(_hash);
+}
+

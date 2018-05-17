@@ -384,9 +384,9 @@ Json::Value Eth::eth_getBlockByHash(string const& _blockHash, bool _includeTrans
 			return Json::Value(Json::nullValue);
 
 		if (_includeTransactions)
-			return toJson(client()->blockInfo(h), client()->blockDetails(h), client()->uncleHashes(h), client()->transactions(h), client()->sealEngine());
+			return toJson(client()->blockInfo(h), client()->blockDetails(h), client()->uncleHashes(h), client()->transactions(h), client()->sealEngine(), client()->blockBytes(h));
 		else
-			return toJson(client()->blockInfo(h), client()->blockDetails(h), client()->uncleHashes(h), client()->transactionHashes(h), client()->sealEngine());
+			return toJson(client()->blockInfo(h), client()->blockDetails(h), client()->uncleHashes(h), client()->transactionHashes(h), client()->sealEngine(), client()->blockBytes(h));
 	}
 	catch (...)
 	{
@@ -403,9 +403,9 @@ Json::Value Eth::eth_getBlockByNumber(string const& _blockNumber, bool _includeT
 			return Json::Value(Json::nullValue);
 
 		if (_includeTransactions)
-			return toJson(client()->blockInfo(h), client()->blockDetails(h), client()->uncleHashes(h), client()->transactions(h), client()->sealEngine());
+			return toJson(client()->blockInfo(h), client()->blockDetails(h), client()->uncleHashes(h), client()->transactions(h), client()->sealEngine(), client()->blockBytes(h));
 		else
-			return toJson(client()->blockInfo(h), client()->blockDetails(h), client()->uncleHashes(h), client()->transactionHashes(h), client()->sealEngine());
+			return toJson(client()->blockInfo(h), client()->blockDetails(h), client()->uncleHashes(h), client()->transactionHashes(h), client()->sealEngine(), client()->blockBytes(h));
 	}
 	catch (...)
 	{

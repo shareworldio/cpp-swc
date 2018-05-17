@@ -6,6 +6,7 @@
 #include "Qpos.h"
 
 #include <sys/syscall.h>  
+#include <json/json.h>
 
 #define gettidv1() syscall(__NR_gettid)  
 #define gettidv2() syscall(SYS_gettid) 
@@ -265,34 +266,38 @@ void Qpos::onBroadBlock(QposPeer* _p, RLP const& _r)
 
 void Qpos::voteBlockEnd()
 {
-	if((int64_t)m_idUnVoted.size() >= (nodeCount()+1)/2){
+	if(nodeCount() && (int64_t)m_idUnVoted.size() >= (nodeCount()+1)/2){
 		cdebug << "Vote failed: m_idUnVoted.size()=" << m_idUnVoted.size() << ",m_idVoted.size()=" << m_idVoted.size() << ",nodeCount()=" << nodeCount();
 
 		//broadBlock(bytes());
 		resetConfig();
-	}else if((int64_t)m_idVoted.size() > nodeCount()/2){
+	}else if(0 == nodeCount() || (int64_t)m_idVoted.size() > nodeCount()/2){
 		cdebug << "Vote succed, m_blockBytes.size() = " << m_blockBytes.size();
 
 		try{
 			if(m_onSealGenerated){
-				std::vector<std::pair<u256, Signature>> sig_list;
+				Json::FastWriter fast_writer;
+				string qosinfo;
+				Json::Value ret(Json::objectValue);
 
-				size_t i = 0;
-				for(auto it : m_miners){
-					if(m_idVoted.count(it)){
-						sig_list.push_back(std::make_pair(u256(i++), m_idVoted[it]));
-					}
+				ret["owner"] = id().hex();
+				ret["sign"] = Json::Value(Json::objectValue);
+
+				for(auto it : m_idVoted){
+					ret["sign"][it.first.hex()] = it.second.hex();
 				}
 
 				BlockHeader header(m_blockBytes);
 				RLP r(m_blockBytes);
 				RLPStream rs;
-				rs.appendList(5);
+				rs.appendList(4);
 				rs.appendRaw(r[0].data()); // header
 				rs.appendRaw(r[1].data()); // tx
 				rs.appendRaw(r[2].data()); // uncles
-				rs.append(header.number()); // number
-				rs.appendVector(sig_list); // sign_list
+
+				qosinfo = fast_writer.write(ret);
+				cdebug << "qosinfo=" << qosinfo;
+				rs.append(qosinfo); // qpos info
 
 				bytes blockBytes;
 				rs.swapOut(blockBytes);
@@ -495,8 +500,8 @@ void Qpos::generateSealBegin(bytes const& _block)
 
 void Qpos::generateSeal(bytes const& _block)
 {
-	m_onSealGenerated(_block, false);
-	return;
+	//m_onSealGenerated(_block, false);
+	//return;
 	
 	m_blocks.push(_block);
 	kill(m_hostTid, QPOS_SIGNAL);

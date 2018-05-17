@@ -86,6 +86,16 @@ Json::Value toJson(p2p::PeerSessionInfo const& _p)
 namespace eth
 {
 
+Json::Value toJson(const std::string& _json)
+{
+	Json::Reader reader;
+	Json::Value json_object;
+
+	reader.parse(_json, json_object);
+
+	return json_object;
+}
+
 Json::Value toJson(dev::eth::BlockHeader const& _bi, SealEngineFace* _sealer)
 {
     Json::Value res;
@@ -134,7 +144,22 @@ Json::Value toJson(dev::eth::Transaction const& _t, std::pair<h256, unsigned> _l
     return res;
 }
 
-Json::Value toJson(dev::eth::BlockHeader const& _bi, BlockDetails const& _bd, UncleHashes const& _us, Transactions const& _ts, SealEngineFace* _face)
+void toJsonBlock(Json::Value& _res, const bytes& _block)
+{
+	(void)_res;
+	
+	if(_block == bytes())
+		return;
+	
+	RLP b(_block);
+	if (!b.isList() || b.itemCount() < 3)
+		return;
+
+	string qposinfo = b[3].toString();
+	_res["qposinfo"] = toJson(qposinfo);
+}
+
+Json::Value toJson(dev::eth::BlockHeader const& _bi, BlockDetails const& _bd, UncleHashes const& _us, Transactions const& _ts, SealEngineFace* _face, bytes _block)
 {
     Json::Value res = toJson(_bi, _face);
     if (_bi)
@@ -147,11 +172,13 @@ Json::Value toJson(dev::eth::BlockHeader const& _bi, BlockDetails const& _bd, Un
         res["transactions"] = Json::Value(Json::arrayValue);
         for (unsigned i = 0; i < _ts.size(); i++)
             res["transactions"].append(toJson(_ts[i], std::make_pair(_bi.hash(), i), (BlockNumber)_bi.number()));
+
+		toJsonBlock(res, _block);
     }
     return res;
 }
 
-Json::Value toJson(dev::eth::BlockHeader const& _bi, BlockDetails const& _bd, UncleHashes const& _us, TransactionHashes const& _ts, SealEngineFace* _face)
+Json::Value toJson(dev::eth::BlockHeader const& _bi, BlockDetails const& _bd, UncleHashes const& _us, TransactionHashes const& _ts, SealEngineFace* _face, bytes _block)
 {
     Json::Value res = toJson(_bi, _face);
     if (_bi)
@@ -164,6 +191,8 @@ Json::Value toJson(dev::eth::BlockHeader const& _bi, BlockDetails const& _bd, Un
         res["transactions"] = Json::Value(Json::arrayValue);
         for (h256 const& t: _ts)
             res["transactions"].append(toJS(t));
+
+		toJsonBlock(res, _block);
     }
     return res;
 }

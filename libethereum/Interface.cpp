@@ -62,3 +62,15 @@ BlockDetails Interface::blockDetails(BlockNumber _block) const
 		return pendingDetails();
 	return blockDetails(hashFromNumber(_block));
 }
+
+bytes Interface::blockBytes(BlockNumber _block) const
+{
+	if (_block == PendingBlock){
+		RLPStream receiptRLP;
+        pendingInfo().streamRLP(receiptRLP);
+        return receiptRLP.out();
+	}
+
+	return blockBytes(hashFromNumber(_block));
+}
+

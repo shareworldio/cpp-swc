@@ -178,6 +178,7 @@ public:
 
     Block block(BlockNumber _h) const;
 
+	virtual bytes blockBytes(h256 _hash) const override;
 protected:
     /// The interface that must be implemented in any class deriving this.
     /// {

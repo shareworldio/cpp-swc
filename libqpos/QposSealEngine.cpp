@@ -259,6 +259,7 @@ bool QposSealEngine::getNodes(set<QposNode> &_miner_list)
 
 		cdebug << "m_nodes_str=" << m_nodes_str;
 		_miner_list = m_nodes;
+		m_nodes_changed = false;
 	}
 
 	return true;

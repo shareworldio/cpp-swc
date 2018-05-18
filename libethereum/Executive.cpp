@@ -169,9 +169,10 @@ Executive::Executive(State& io_s, Block const& _block, unsigned _txIndex, BlockC
 
 u256 Executive::gasUsed() const
 {
-	assert(m_t.gas() >= m_gas);
-    return m_t.gas() - m_gas;
-	return m_t.gas() > m_gas ? m_t.gas() - m_gas : 0;
+	if(m_t.gas() < m_gas)
+		BOOST_THROW_EXCEPTION(OutOfGasIntrinsic() << RequirementError((bigint)m_t.gas(), (bigint)m_gas));
+
+	return m_t.gas() - m_gas;
 }
 
 void Executive::accrueSubState(SubState& _parentContext)

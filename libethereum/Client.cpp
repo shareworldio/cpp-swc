@@ -899,13 +899,14 @@ pair<h256, Address> Client::submitTransaction(TransactionSkeleton const& _t, Sec
 		}
 	}
 
-	cdebug << "ts.gas=" << ts.gas << ",ts.gasPrice=" << ts.gasPrice << ",ts.nonce=" << ts.nonce;
 	Transaction t(ts, _secret);
-	if(ImportResult::Success == m_tq.import(t.rlp())){
+	ImportResult result = m_tq.import(t.rlp());
+	if(ImportResult::Success == result){
 		if (auto h = m_host.lock())
         	h->noteNewTransactions();
 	}
-	
+
+	cdebug << "ts.gas=" << ts.gas << ",ts.gasPrice=" << ts.gasPrice << ",ts.nonce=" << ts.nonce << ",result=" << (int)result;
 	return make_pair(t.sha3(), toAddress(ts.from, ts.nonce));
 }
 

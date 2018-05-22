@@ -188,7 +188,7 @@ std::map<string,string> getValueMap(js::mValue &v)
 	return m;
 }
 
-std::set<QposNode> strToNode(string _str)
+std::set<QposNode> strToQpos(string _str)
 {
 	std::set<QposNode> nodes;
 	js::mValue val;
@@ -225,6 +225,38 @@ std::set<QposNode> strToNode(string _str)
 	return nodes;
 }
 
+std::set<NodeID> strToNode(string _str)
+{
+	std::set<NodeID> nodes;
+	js::mValue val;
+	json_spirit::read_string_or_throw(_str, val);
+	js::mArray array = val.get_array();
+
+	cdebug << "_str=" << _str;
+	for (size_t i = 0; i < array.size(); ++i)
+	{
+		try{
+			js::mValue v = array[i];
+			js::mObject o = v.get_obj();
+			auto it = o.find("id");
+			auto& codeObj = it->second;
+
+            if (codeObj.type() != json_spirit::str_type)
+            {
+            	continue;
+            }
+
+			auto& id = codeObj.get_str();
+			cdebug << "i=" << i << ",id=" << id;
+			nodes.insert(NodeID(id));
+		}catch(...){
+			cdebug << "parse json err i=" << i;
+		}
+	}
+
+	return nodes;
+}
+
 bool QposSealEngine::getMinerList() 
 {
 	DEV_RECURSIVE_GUARDED(x_nodes)
@@ -235,17 +267,18 @@ bool QposSealEngine::getMinerList()
 		
 		m_nodes_str = out;
 		m_nodes_changed = true;
-		m_nodes = (strToNode(m_nodes_str));
+		m_nodes = (strToQpos(m_nodes_str));
 		cdebug << "m_nodes_str=" << m_nodes_str;
 	}
 
 	return true;
 }
 
-bool QposSealEngine::getMinerList(set<NodeID> &_miner_list, int _blk_no) const 
+bool QposSealEngine::getMinerList(set<NodeID> &_miner_list, BlockNumber _blk_no) const 
 {
-	(void)_miner_list;
-	(void)_blk_no;
+	string out = m_client->getNodes("", _blk_no);
+	_miner_list = strToNode(out);
+	cdebug << "_blk_no=" << _blk_no << ",out=" << out;
 
 	return true;
 }

@@ -287,6 +287,18 @@ void Qpos::voteBlockEnd()
 					ret["sign"][it.first.hex()] = it.second.hex();
 				}
 
+				
+
+				std::vector<std::pair<NodeID, Signature>> sig_list;
+				for(auto it : m_idVoted){
+					sig_list.push_back(it);
+				}
+
+				RLPStream info;
+				info.appendList(2);
+				info.append(id()); 
+				info.appendVector(sig_list); // sign_list
+
 				BlockHeader header(m_blockBytes);
 				RLP r(m_blockBytes);
 				RLPStream rs;
@@ -297,7 +309,8 @@ void Qpos::voteBlockEnd()
 
 				qosinfo = fast_writer.write(ret);
 				cdebug << "qosinfo=" << qosinfo;
-				rs.append(qosinfo); // qpos info
+				//rs.append(qosinfo); // qpos info
+				rs.appendRaw(info.out()); // qpos info
 
 				bytes blockBytes;
 				rs.swapOut(blockBytes);
@@ -531,10 +544,9 @@ h512s Qpos::getMinerNodeList()
 	return ret;
 }
 
-bool Qpos::checkBlockSign(BlockHeader const& _header, std::vector<std::pair<Public, Signature>> _sign_list) 
+bool Qpos::checkBlockSign(BlockHeader const& _header, bytesConstRef _block) const
 {
 	Timer t;
-	cdebug << "PBFT::checkBlockSign " << _header.number();
 
 	set<NodeID> miner_list;
 	if (!getMinerList(miner_list, static_cast<int>(_header.number() - 1))) {
@@ -542,21 +554,55 @@ bool Qpos::checkBlockSign(BlockHeader const& _header, std::vector<std::pair<Publ
 		return false;
 	}
 
-	cdebug << "checkBlockSign call getAllNodeConnInfo: blk=" << _header.number() - 1 << ", miner_list.size()=" << miner_list.size();
+	cdebug << "miner_list=" << miner_list;
+	if(miner_list.size() == 0)
+		return true;
 
-	unsigned singCount = 0;
-	for (auto item : _sign_list) {
+	RLP b(_block);
+	cdebug << "b.isList()=" << b.isList() << "b.itemCount()=" << b.itemCount() << "_header.number() - 1=" << _header.number() - 1 << ", miner_list.size()=" << miner_list.size();;
+	if (!b.isList() || b.itemCount() < 4)
+		return false;
+
+	const std::vector<std::pair<p2p::NodeID, Signature>> &sign_list = b[3][1].toVector<std::pair<p2p::NodeID, Signature>>();
+
+	set<p2p::NodeID> signs;
+	for (auto item : sign_list) {
+		cdebug << "item.first=" << item.first << ",miner_list=" << miner_list;
 		if (!miner_list.count(item.first) || !dev::verify(item.first, item.second, _header.hash(WithoutSeal))) {
 			cdebug << "checkBlockSign failed, verify false, blk=" << _header.number() << ",hash=" << _header.hash(WithoutSeal);
 			continue;
 		}
-
-		singCount++;
-		if(singCount >= (miner_list.size()+1)/2)
+		
+		cdebug << "checkBlockSign succeed signs.size()=" << signs.size() << ",miner_list.size()=" << miner_list.size();
+		signs.insert(item.first);
+		if(signs.size() >= (miner_list.size()+1)/2)
 			return true;
 	}
 
-	cdebug << "checkBlockSign success, blk=" << _header.number() << ",hash=" << _header.hash(WithoutSeal) << ",timecost=" << t.elapsed() / 1000 << "ms";
+	cdebug << "checkBlockSign failed, blk=" << _header.number() << ",hash=" << _header.hash(WithoutSeal) << ",timecost=" << t.elapsed() / 1000 << "ms";
 	return false;
 }
+
+void Qpos::verify(Strictness _s, BlockHeader const& _bi, BlockHeader const& _parent, bytesConstRef _block) const
+{
+	SealEngineFace::verify(_s, _bi, _parent, _block);
+
+	if (_s != CheckNothingNew)
+	{
+		if (_bi.gasLimit() < chainParams().minGasLimit)
+			BOOST_THROW_EXCEPTION(InvalidGasLimit() << RequirementError(bigint(chainParams().minGasLimit), bigint(_bi.gasLimit())) );
+
+		if (_bi.gasLimit() > chainParams().maxGasLimit)
+			BOOST_THROW_EXCEPTION(InvalidGasLimit() << RequirementError(bigint(chainParams().maxGasLimit), bigint(_bi.gasLimit())) );
+
+		if (_bi.number() && _bi.extraData().size() > chainParams().maximumExtraDataSize)
+			BOOST_THROW_EXCEPTION(ExtraDataTooBig() << RequirementError(bigint(chainParams().maximumExtraDataSize), bigint(_bi.extraData().size())) << errinfo_extraData(_bi.extraData()));
+	}
+
+	if(_s == CheckEverything && !Qpos::checkBlockSign(_bi, _block))
+	{
+		BOOST_THROW_EXCEPTION(InvalidBlockSigns() << errinfo_comment("checkBlockSign error"));
+	}
+}
+
 

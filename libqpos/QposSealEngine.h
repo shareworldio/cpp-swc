@@ -96,7 +96,7 @@ public:
 protected:
 	virtual void tick();
 	bool getMinerList();
-	bool getMinerList(set<NodeID> &_miner_list, int _blk_no = LatestBlock) const;
+	bool getMinerList(set<NodeID> &_miner_list, BlockNumber _blk_no = LatestBlock) const;
 
 	bool getNodes(set<QposNode> &_miner_list);
 		

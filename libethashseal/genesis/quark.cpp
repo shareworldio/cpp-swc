@@ -15,7 +15,7 @@ R"E(
 		"constantinopleForkBlock": "0x00",
 		"networkID" : "0xfe",
 		"chainID": "0xfe",
-		"maximumExtraDataSize": "0x20",
+		"maximumExtraDataSize": "0x100",
 		"tieBreakingGas": false,
 		"minGasLimit": "0x1388",
 		"maxGasLimit": "7fffffffffffffff",
@@ -23,11 +23,11 @@ R"E(
 		"minimumDifficulty": "0x020000",
 		"difficultyBoundDivisor": "0x0800",
 		"durationLimit": "0x0d",
-		"blockReward": "0x4563918244F40000"
+		"blockReward": "0x00"
 	},
 	"genesis": {
 		"nonce": "0x0000000000000042",
-		"difficulty": "0xfe",
+		"difficulty": "0x0",
 		"mixHash": "0x0000000000000000000000000000000000000000000000000000000000000000",
 		"author": "0x0000000000000000000000000000000000000000",
 		"timestamp": "0x00",

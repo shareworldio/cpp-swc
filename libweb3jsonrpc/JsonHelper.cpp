@@ -27,6 +27,9 @@
 #include <libwebthree/WebThree.h>
 #include <libethcore/CommonJS.h>
 #include <jsonrpccpp/common/exception.h>
+
+#include <libp2p/Common.h>
+
 using namespace std;
 using namespace dev;
 using namespace eth;
@@ -146,17 +149,24 @@ Json::Value toJson(dev::eth::Transaction const& _t, std::pair<h256, unsigned> _l
 
 void toJsonBlock(Json::Value& _res, const bytes& _block)
 {
-	(void)_res;
-	
+	cdebug << "_block.size()=" << _block.size();
 	if(_block == bytes())
 		return;
 	
 	RLP b(_block);
-	if (!b.isList() || b.itemCount() < 3)
+	cdebug << "b.isList()=" << b.isList() << "b.itemCount()=" << b.itemCount();
+	if (!b.isList() || b.itemCount() < 4)
 		return;
 
-	string qposinfo = b[3].toString();
-	_res["qposinfo"] = toJson(qposinfo);
+	const p2p::NodeID& id = static_cast<p2p::NodeID>(b[3][0]);
+	const std::vector<std::pair<p2p::NodeID, Signature>>& sign_list = b[3][1].toVector<std::pair<p2p::NodeID, Signature>>();
+	
+	_res["qposinfo"] = Json::Value(Json::objectValue);
+	_res["qposinfo"]["owner"] = id.hex();
+	_res["qposinfo"]["signs"] = Json::Value(Json::objectValue);
+	for(auto it : sign_list){
+		_res["qposinfo"]["signs"][it.first.hex()] = it.second.hex();
+	}
 }
 
 Json::Value toJson(dev::eth::BlockHeader const& _bi, BlockDetails const& _bd, UncleHashes const& _us, Transactions const& _ts, SealEngineFace* _face, bytes _block)

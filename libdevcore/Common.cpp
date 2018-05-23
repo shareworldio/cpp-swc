@@ -131,7 +131,7 @@ string Demangle(const char* name)
 void DumpStack(void)
 {
 	int nptrs;
-	#define SIZE 1000
+	#define SIZE 10000
 	void *buffer[SIZE];
 	char **strings;
 	nptrs = backtrace(buffer, SIZE);

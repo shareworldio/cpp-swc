@@ -916,6 +916,7 @@ ExecutionResult Client::call(Address const& _from, u256 _value, Address _dest, b
     ExecutionResult ret;
     try
     {
+    	cdebug << "_from=" << _from << ",_dest=" << _dest << ",_blockNumber=" << _blockNumber;
         Block temp = block(_blockNumber);
         u256 nonce = max<u256>(temp.transactionsFrom(_from), m_tq.maxNonce(_from));
         u256 gas = _gas == Invalid256 ? gasLimitRemaining() : _gas;
@@ -936,7 +937,7 @@ ExecutionResult Client::call(Address const& _from, u256 _value, Address _dest, b
 
 bytes Client::call(Address _dest, bytes const& _data, BlockNumber _blockNumber)
 {
-	return call(jsToAddress("0x007cce4866d8b9ef101da517c4592230d1b90e12"), u256(0), _dest, _data, Invalid256, Invalid256, _blockNumber, FudgeFactor::Lenient).output;
+	return call(jsToAddress(nodeAddress()), u256(0), _dest, _data, Invalid256, Invalid256, _blockNumber, FudgeFactor::Lenient).output;
 }
 
 std::string Client::getNodes(string const& _node, BlockNumber _blockNumber)
@@ -951,7 +952,8 @@ std::string Client::getNodes(string const& _node, BlockNumber _blockNumber)
 		data = dev::eth::ContractABI().abiIn("getNode(string)", _node);
 	}
 
-	bytes result = call(jsToAddress(nodeAddress()), data, _blockNumber);
+	bytes result = call(jsToAddress(nodeAddress()), u256(0), jsToAddress(nodeAddress()), data, 0x100000, 0, _blockNumber, FudgeFactor::Lenient).output;
+	//bytes result = call(jsToAddress(nodeAddress()), data, _blockNumber);
 	string out = eth::abiOut<std::string>(result);
 
 	cdebug << "data=" << data << ",out=" << out;

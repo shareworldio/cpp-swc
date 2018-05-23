@@ -53,6 +53,8 @@ public:
 	virtual bytes sealRLP() const { return bytes(); }
 	virtual StringHashMap jsInfo(BlockHeader const&) const { return StringHashMap(); }
 
+	virtual bool checkBlockSign(BlockHeader const& _header, bytesConstRef _block) const {(void)_header; (void)_block; return true;};
+	
 	/// Don't forget to call Super::verify when subclassing & overriding.
 	virtual void verify(Strictness _s, BlockHeader const& _bi, BlockHeader const& _parent = BlockHeader(), bytesConstRef _block = bytesConstRef()) const;
 	/// Additional verification for transactions in blocks.

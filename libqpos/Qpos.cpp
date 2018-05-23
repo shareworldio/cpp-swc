@@ -546,15 +546,16 @@ h512s Qpos::getMinerNodeList()
 
 bool Qpos::checkBlockSign(BlockHeader const& _header, bytesConstRef _block) const
 {
+	//return true;
 	Timer t;
 
 	set<NodeID> miner_list;
-	if (!getMinerList(miner_list, static_cast<int>(_header.number() - 1))) {
+	if (!getMinerList(miner_list, static_cast<BlockNumber>(_header.number() - 1))) {
 		cwarn << "checkBlockSign failed for getMinerList return false, blk=" <<  _header.number() - 1;
 		return false;
 	}
 
-	cdebug << "miner_list=" << miner_list;
+	cdebug << "miner_list=" << miner_list << ",_header.number()=" << _header.number();
 	if(miner_list.size() == 0)
 		return true;
 
@@ -573,36 +574,16 @@ bool Qpos::checkBlockSign(BlockHeader const& _header, bytesConstRef _block) cons
 			continue;
 		}
 		
-		cdebug << "checkBlockSign succeed signs.size()=" << signs.size() << ",miner_list.size()=" << miner_list.size();
+		cdebug << "checkBlockSign signs.size()=" << signs.size() << ",miner_list.size()=" << miner_list.size();
 		signs.insert(item.first);
-		if(signs.size() >= (miner_list.size()+1)/2)
+		if(signs.size() >= (miner_list.size()+1)/2){
+			cdebug << "checkBlockSign succeed signs.size()=" << signs.size() << ",miner_list.size()=" << miner_list.size();
 			return true;
+		}
 	}
 
 	cdebug << "checkBlockSign failed, blk=" << _header.number() << ",hash=" << _header.hash(WithoutSeal) << ",timecost=" << t.elapsed() / 1000 << "ms";
 	return false;
-}
-
-void Qpos::verify(Strictness _s, BlockHeader const& _bi, BlockHeader const& _parent, bytesConstRef _block) const
-{
-	SealEngineFace::verify(_s, _bi, _parent, _block);
-
-	if (_s != CheckNothingNew)
-	{
-		if (_bi.gasLimit() < chainParams().minGasLimit)
-			BOOST_THROW_EXCEPTION(InvalidGasLimit() << RequirementError(bigint(chainParams().minGasLimit), bigint(_bi.gasLimit())) );
-
-		if (_bi.gasLimit() > chainParams().maxGasLimit)
-			BOOST_THROW_EXCEPTION(InvalidGasLimit() << RequirementError(bigint(chainParams().maxGasLimit), bigint(_bi.gasLimit())) );
-
-		if (_bi.number() && _bi.extraData().size() > chainParams().maximumExtraDataSize)
-			BOOST_THROW_EXCEPTION(ExtraDataTooBig() << RequirementError(bigint(chainParams().maximumExtraDataSize), bigint(_bi.extraData().size())) << errinfo_extraData(_bi.extraData()));
-	}
-
-	if(_s == CheckEverything && !Qpos::checkBlockSign(_bi, _block))
-	{
-		BOOST_THROW_EXCEPTION(InvalidBlockSigns() << errinfo_comment("checkBlockSign error"));
-	}
 }
 
 

@@ -52,7 +52,7 @@ public:
 	h512s getMinerNodeList();
 	int64_t lastConsensusTime() const { /*Guard l(m_mutex);*/ return m_last_consensus_time;};
 
-	void verify(Strictness _s, BlockHeader const& _bi, BlockHeader const& _parent, bytesConstRef _block) const override;
+	bool checkBlockSign(BlockHeader const& _header, bytesConstRef _block) const override;
 protected:
 	virtual void tick();
 	void reportBlockSelf();
@@ -74,7 +74,7 @@ protected:
 	void addNodes(const std::string &_nodes);
 	int64_t nodeCount() const;
 	void signalHandler(const boost::system::error_code& err, int signal);
-	bool checkBlockSign(BlockHeader const& _header, bytesConstRef _block) const;
+	
 private:
 	unsigned m_consensusTimeInterval = (20*TIME_PER_SECOND);
 

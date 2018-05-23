@@ -668,7 +668,7 @@ ImportRoute BlockChain::import(VerifiedBlockRef const& _block, OverlayDB const& 
     checkBlockTimestamp(_block.info);
 
     // Verify parent-critical parts
-    verifyBlock(_block.block, m_onBad, ImportRequirements::InOrderChecks);
+    verifyBlock(_block.block, m_onBad, ImportRequirements::InOrderChecks | ImportRequirements::CheckSigns);
 
     clog(BlockChainChat) << "Attempting import of " << _block.info.hash() << "...";
 
@@ -1570,6 +1570,11 @@ VerifiedBlockRef BlockChain::verifyBlock(bytesConstRef _block, std::function<voi
             ++i;
         }
     res.block = bytesConstRef(_block);
+
+	if(_ir & ImportRequirements::CheckSigns && !sealEngine()->checkBlockSign(h, _block)){
+			BOOST_THROW_EXCEPTION(InvalidBlockSigns() << errinfo_comment("checkBlockSign error"));
+	}
+	
     return res;
 }
 

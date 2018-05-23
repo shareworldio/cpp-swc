@@ -139,6 +139,7 @@ struct ImportRequirements
 		Parent = 64, ///< Check parent block header.
 		UncleParent = 128, ///< Check uncle parent block header.
 		PostGenesis = 256, ///< Require block to be non-genesis.
+		CheckSigns = 512, ///< Require block to be non-genesis.
 		CheckUncles = UncleBasic | UncleSeals, ///< Check uncle seals.
 		CheckTransactions = TransactionBasic | TransactionSignatures, ///< Check transaction signatures.
 		OutOfOrderChecks = ValidSeal | CheckUncles | CheckTransactions, ///< Do all checks that can be done independently of prior blocks having been imported.

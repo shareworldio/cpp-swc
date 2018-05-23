@@ -68,6 +68,12 @@ QposClient::~QposClient() {
 
 void QposClient::init(ChainParams const&, p2p::Host *_host) {
 	raft()->onSealGenerated([ = ](bytes const & _block, bool _isOurs) {
+		if(_block.size() == 0){
+			resetState();
+			cdebug << "_block.size() == 0";
+			return;
+		}
+				
 		if (!this->submitSealed(_block, _isOurs)) {
 			clog(ClientNote) << "Submitting block failed...";
 		} else {

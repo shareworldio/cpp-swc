@@ -587,6 +587,8 @@ std::pair<ExecutionResult, TransactionReceipt> State::execute(EnvInfo const& _en
     TransactionReceipt const receipt = _envInfo.number() >= _sealEngine.chainParams().byzantiumForkBlock ?
         TransactionReceipt(statusCode, startGasUsed + e.gasUsed(), e.logs()) :
         TransactionReceipt(rootHash(), startGasUsed + e.gasUsed(), e.logs());
+
+	cdebug << "res.excepted=" << (int)res.excepted << ",res.gasUsed=" << res.gasUsed << ",_t.gas()=" << _t.gas() << ",res.output=" << res.output;
     return make_pair(res, receipt);
 }
 

@@ -429,11 +429,13 @@ void Qpos::onHeart(QposPeer* _p, RLP const& _r)
 {
 	int64_t currentView = _r[0][1].toInt();
 
-	if(m_isLeader && (currentView > m_currentView ||  (currentView == m_currentView && _p->id() > id())))
+	if(m_isLeader && (currentView > m_currentView ||  (currentView == m_currentView && _p->id() > id()))){
 		m_isLeader = false;
+	}
 
+	m_currentView = currentView;
 	m_voteTimeOut = utcTime() + QPOS_VOTE_TIMEOUT;
-	cdebug << "currentView=" << currentView << ",m_isLeader=" << (bool)m_isLeader;
+	cdebug << "currentView=" << currentView << ",m_isLeader=" << (bool)m_isLeader << ",m_currentView=" << m_currentView;
 }
 
 void Qpos::onVote(QposPeer* _p, RLP const& _r)

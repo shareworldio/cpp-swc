@@ -952,11 +952,14 @@ std::string Client::getNodes(string const& _node, BlockNumber _blockNumber)
 		data = dev::eth::ContractABI().abiIn("getNode(string)", _node);
 	}
 
-	bytes result = call(jsToAddress(nodeAddress()), u256(0), jsToAddress(nodeAddress()), data, 0x100000, 0, _blockNumber, FudgeFactor::Lenient).output;
+	bytes result = call(jsToAddress(nodeAddress()), u256(0), jsToAddress(nodeAddress()), data, 0x100000000, 0, _blockNumber, FudgeFactor::Lenient).output;
 	//bytes result = call(jsToAddress(nodeAddress()), data, _blockNumber);
 	string out = eth::abiOut<std::string>(result);
+	if(out == ""){
+		DumpStack();
+	}
 
-	cdebug << "data=" << data << ",out=" << out;
+	cdebug << "data=" << data << ",_blockNumber=" << _blockNumber << ",out=" << out;
 	return out;
 }
 

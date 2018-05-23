@@ -18,7 +18,7 @@
 #include "SealEngine.h"
 #include "TransactionBase.h"
 
-#include <libdevcore/log.h>
+#include <libdevcore/Log.h>
 #include <libethcore/CommonJS.h>
 #include <libsolidity/Solidity.h>
 

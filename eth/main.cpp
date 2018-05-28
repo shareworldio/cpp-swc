@@ -64,6 +64,10 @@
 #include "BuildInfo.h"
 #include "AccountManager.h"
 
+#include <unistd.h>
+#include <sys/types.h>
+#include <sys/wait.h>
+
 using namespace std;
 using namespace dev;
 using namespace dev::p2p;
@@ -176,6 +180,28 @@ bool ExitHandler::s_shouldExit = false;
 
 }
 
+void setDaemon()
+{
+	daemon(1, 1);
+
+	while(1){
+		pid_t pid = fork();
+		if(pid == -1)  
+	    {  
+	        cdebug << "fork error";  
+	        exit(1);  
+	    }  
+	    else if(pid)  
+	    {  
+	        wait(NULL);  
+	    }
+		else
+		{
+			break;
+	    }
+	}
+}
+
 int main(int argc, char** argv)
 {
     setDefaultOrCLocale();
@@ -283,6 +309,7 @@ int main(int argc, char** argv)
     MinerCLI m(MinerCLI::OperationMode::None);
 
     bool listenSet = false;
+	bool daemon = false;
     bool chainConfigIsSet = false;
     fs::path configPath;
     string configJSON;
@@ -294,6 +321,7 @@ int main(int argc, char** argv)
     addClientOption("ropsten", "Use the Ropsten testnet.");
     addClientOption("private", po::value<string>()->value_name("<name>"), "Use a private chain.");
     addClientOption("test", "Testing mode: Disable PoW and provide test rpc interface.");
+	addClientOption("daemon", "Run in service process mode.");
     addClientOption("config", po::value<string>()->value_name("<file>"),
         "Configure specialised blockchain using given JSON information.\n");
     addClientOption("genesis", po::value<string>()->value_name("<file>"), "Set genesis JSON file.");
@@ -474,6 +502,10 @@ int main(int argc, char** argv)
         enableDiscovery = false;
         disableDiscovery = true;
         bootstrap = false;
+    }
+	if (vm.count("daemon"))
+    {
+        daemon = true;
     }
     if (vm.count("verbosity"))
         g_logVerbosity = vm["verbosity"].as<int>();
@@ -978,6 +1010,9 @@ int main(int argc, char** argv)
         chainParams.sealEngineName = "NoProof";
         chainParams.allowFutureBlocks = true;
     }
+
+	if(daemon)
+		setDaemon();
 
     dev::WebThreeDirect web3(WebThreeDirect::composeClientVersion("eth"), getDataDir(),
         snapshotPath, chainParams, withExisting, nodeMode == NodeMode::Full ? caps : set<string>(),

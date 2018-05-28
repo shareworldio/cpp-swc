@@ -159,6 +159,8 @@ public:
 	/// Get the fee associated for a transaction with the given data.
 	static int64_t baseGasRequired(bool _contractCreation, bytesConstRef _data, EVMSchedule const& _es);
 
+	/// @returns create time.
+	int64_t time() const { return m_time; }
 protected:
 	/// Type of transaction.
 	enum Type
@@ -185,6 +187,8 @@ protected:
 
 	mutable h256 m_hashWith;			///< Cached hash of transaction with signature.
 	mutable Address m_sender;			///< Cached sender, determined from signature.
+
+	int64_t m_time = utcTime();
 };
 
 /// Nice name for vector of Transaction.

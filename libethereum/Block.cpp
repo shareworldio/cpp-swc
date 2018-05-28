@@ -325,6 +325,7 @@ pair<TransactionReceipts, bool> Block::sync(BlockChain const& _bc, TransactionQu
 
     assert(_bc.currentHash() == m_currentBlock.parentHash());
     auto deadline =  chrono::steady_clock::now() + chrono::milliseconds(msTimeout);
+	int64_t now = utcTime();
 
 	for (int goodTxs = max(0, (int)ts.size() - 1); goodTxs < (int)ts.size(); )
 	{
@@ -338,7 +339,13 @@ pair<TransactionReceipts, bool> Block::sync(BlockChain const& _bc, TransactionQu
 			{
 				try
 				{
-					if (t.gasPrice() >= _gp.ask(*this))
+					if(t.time() + 240*TIME_PER_SECOND < now)
+					{
+						_tq.drop(t.sha3());
+						droped = true;
+						clog(StateTrace) << "t.sha3()=" << t.sha3() << ",t.time()=" << t.time() << ",now=" << now << ",Dropping old transaction (time too early)";
+					}
+					else if (t.gasPrice() >= _gp.ask(*this))
 					{
 //						Timer t;
 						execute(_bc.lastBlockHashes(), t);

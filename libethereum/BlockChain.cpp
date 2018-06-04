@@ -1572,6 +1572,7 @@ VerifiedBlockRef BlockChain::verifyBlock(bytesConstRef _block, std::function<voi
     res.block = bytesConstRef(_block);
 
 	if(_ir & ImportRequirements::CheckSigns && !sealEngine()->checkBlockSign(h, _block)){
+		DumpStack();
 		BOOST_THROW_EXCEPTION(InvalidBlockSigns() << errinfo_comment("checkBlockSign error"));
 	}
 	

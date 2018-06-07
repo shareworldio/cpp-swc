@@ -253,6 +253,8 @@ bool LegacyVM::caseCallSetup(CallParameters *callParams, bytesRef& o_output)
 	}
 
 	m_runGas = toInt63(callParams->gas);
+	if (m_io_gas < m_runGas)
+		m_runGas = m_io_gas;
 	updateIOGas();
 
 	if (haveValueArg && m_SP[2] > 0)

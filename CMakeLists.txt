@@ -24,6 +24,12 @@
 
 cmake_minimum_required(VERSION 3.5.1)
 
+set(CMAKE_THREAD_LIBS_INIT "-lpthread") 
+set(CMAKE_HAVE_THREADS_LIBRARY 1) 
+set(CMAKE_USE_WIN32_THREADS_INIT 0) 
+set(CMAKE_USE_PTHREADS_INIT 1) 
+set(THREADS_PREFER_PTHREAD_FLAG ON)
+
 if (NOT DEFINED CMAKE_TOOLCHAIN_FILE)
     # The default toolchain file configures compilers and build environment.
     # This configuration is also used by hunter to build dependencies.
